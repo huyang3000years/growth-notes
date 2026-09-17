@@ -336,12 +336,16 @@
     var r = null;
     for (var i = 0; i < state.records.length; i++) if (state.records[i].id === id) { r = state.records[i]; break; }
     if (!r) return;
-    var c = findCat(r.catId);
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    var catChips = state.categories.map(function (c) {
+      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+    }).join('');
     overlay.innerHTML =
       '<div class="modal-box">' +
-      '<h3 class="modal-title">编辑记录' + (c ? ' · ' + c.name : '') + '</h3>' +
+      '<h3 class="modal-title">编辑记录</h3>' +
+      '<label class="lbl">分类</label>' +
+      '<div class="chips" id="editCats">' + catChips + '</div>' +
       '<label class="lbl">事项</label>' +
       '<input type="text" id="editContent" class="modal-input" value="' + esc(r.content || '') + '" placeholder="如：跳绳100个">' +
       '<label class="lbl">分钟</label>' +
@@ -351,8 +355,15 @@
       '<button type="button" class="btn-primary" id="editSave">保存</button>' +
       '</div></div>';
     document.body.appendChild(overlay);
+    var selCat = r.catId;
     var contentEl = overlay.querySelector('#editContent');
     contentEl.focus();
+    overlay.querySelectorAll('#editCats .chip').forEach(function (b) {
+      b.addEventListener('click', function () {
+        selCat = b.dataset.cat;
+        overlay.querySelectorAll('#editCats .chip').forEach(function (x) { x.classList.toggle('active', x === b); });
+      });
+    });
     function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
     overlay.querySelector('#editCancel').addEventListener('click', close);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
@@ -360,9 +371,10 @@
       var content = (contentEl.value || '').trim();
       var minutesRaw = (overlay.querySelector('#editMinutes').value || '').trim();
       var minutes = parseInt(minutesRaw, 10);
+      if (!selCat) { alert('请选择分类'); return; }
       if (!content) { alert('事项必填'); contentEl.focus(); return; }
       if (!minutesRaw || isNaN(minutes) || minutes <= 0) { alert('请填写有效的分钟数'); return; }
-      store.op('updateRecord', { id: r.id, fields: { content: content, minutes: minutes } });
+      store.op('updateRecord', { id: r.id, fields: { catId: selCat, content: content, minutes: minutes } });
       close();
     });
   }
