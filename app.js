@@ -17,7 +17,7 @@
     recDate: fmtDate(new Date()),
     statsRange: 'week',
     statsDate: fmtDate(new Date()),
-    editId: null
+    panoRange: 'all'
   };
   var currentView = 'record';
   var store = createLocalStore();
@@ -125,8 +125,7 @@
     if (!recs.length) return '<li class="rec-empty">这一天还没有记录，开始添加吧～</li>';
     return recs.map(function (r) {
       var c = findCat(r.catId);
-      var editing = ui.editId === r.id;
-      return '<li class="rec-item' + (editing ? ' editing' : '') + '">' +
+      return '<li class="rec-item">' +
         '<span class="rec-dot" style="background:' + (c ? c.color : '#999') + '"></span>' +
         '<div class="rec-main"><div class="rec-title">' + esc(r.content || '') + '</div>' +
         '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + r.date + '</div></div>' +
@@ -149,12 +148,10 @@
 
     root.innerHTML =
       '<div class="card">' +
-      (ui.editId ? '<div class="edit-banner">✏️ 正在编辑一条记录 <button type="button" class="link-btn" id="cancelEdit">取消</button></div>' : '') +
       '<label class="lbl">日期</label>' +
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
       '<div class="chips">' + chips + '</div>' +
-      '<label class="lbl">事项内容（必填）与时长·分钟（必填）</label>' +
       '<div id="recRows" class="rec-rows"></div>' +
       '<button class="btn-ghost add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
@@ -173,16 +170,11 @@
     root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
     root.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (ui.editId === b.dataset.del) ui.editId = null;
-        store.op('deleteRecord', { id: b.dataset.del });
-      });
+      b.addEventListener('click', function () { store.op('deleteRecord', { id: b.dataset.del }); });
     });
     root.querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { startEdit(b.dataset.edit); });
+      b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
     });
-    var cancelEdit = root.querySelector('#cancelEdit');
-    if (cancelEdit) cancelEdit.addEventListener('click', function () { ui.editId = null; ui.rows = [{ content: '', minutes: '' }]; renderRecord(); });
     renderRows();
   }
 
@@ -193,8 +185,10 @@
     box.innerHTML = ui.rows.map(function (row, i) {
       var showDel = ui.rows.length > 1;
       return '<div class="rec-row">' +
-        '<input type="text" class="ri-content" data-row="' + i + '" placeholder="事项内容（必填）" value="' + esc(row.content) + '">' +
-        '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="分钟" value="' + esc(row.minutes) + '">' +
+        '<div class="ri-field"><label class="ri-lbl">事项</label>' +
+        '<input type="text" class="ri-content" data-row="' + i + '" placeholder="如：跳绳100个" value="' + esc(row.content) + '"></div>' +
+        '<div class="ri-field ri-min"><label class="ri-lbl">分钟</label>' +
+        '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
         '</div>';
     }).join('');
@@ -231,34 +225,48 @@
       if (!hasMin || isNaN(minutes) || minutes <= 0) { alert('第 ' + (i + 1) + ' 行：时长需填写有效的分钟数'); return; }
       toSave.push({ content: content, minutes: minutes });
     }
-    if (!toSave.length) { alert('请至少填写一行「事项内容 + 时长」'); return; }
-    if (ui.editId) {
-      var first = toSave[0];
-      store.op('updateRecord', { id: ui.editId, fields: { date: ui.recDate, catId: ui.catId, content: first.content, minutes: first.minutes } });
-      for (var k = 1; k < toSave.length; k++) {
-        store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: toSave[k].content, minutes: toSave[k].minutes, createdAt: Date.now() } });
-      }
-      ui.editId = null;
-    } else {
-      toSave.forEach(function (item) {
-        store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
-      });
-    }
+    if (!toSave.length) { alert('请至少填写一行「事项 + 分钟」'); return; }
+    toSave.forEach(function (item) {
+      store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
+    });
     ui.rows = [{ content: '', minutes: '' }];
     renderRows();
     refreshRecordList();
   }
 
-  function startEdit(id) {
+  function openEditModal(id) {
     var r = null;
     for (var i = 0; i < state.records.length; i++) if (state.records[i].id === id) { r = state.records[i]; break; }
     if (!r) return;
-    ui.editId = id;
-    ui.recDate = r.date;
-    ui.catId = r.catId;
-    ui.rows = [{ content: r.content || '', minutes: r.minutes }];
-    renderRecord();
-    if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
+    var c = findCat(r.catId);
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box">' +
+      '<h3 class="modal-title">编辑记录' + (c ? ' · ' + c.name : '') + '</h3>' +
+      '<label class="lbl">事项</label>' +
+      '<input type="text" id="editContent" class="modal-input" value="' + esc(r.content || '') + '" placeholder="如：跳绳100个">' +
+      '<label class="lbl">分钟</label>' +
+      '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
+      '<div class="modal-actions">' +
+      '<button type="button" class="btn-ghost" id="editCancel">取消</button>' +
+      '<button type="button" class="btn-primary" id="editSave">保存</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    var contentEl = overlay.querySelector('#editContent');
+    contentEl.focus();
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelector('#editCancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    overlay.querySelector('#editSave').addEventListener('click', function () {
+      var content = (contentEl.value || '').trim();
+      var minutesRaw = (overlay.querySelector('#editMinutes').value || '').trim();
+      var minutes = parseInt(minutesRaw, 10);
+      if (!content) { alert('事项必填'); contentEl.focus(); return; }
+      if (!minutesRaw || isNaN(minutes) || minutes <= 0) { alert('请填写有效的分钟数'); return; }
+      store.op('updateRecord', { id: r.id, fields: { content: content, minutes: minutes } });
+      close();
+    });
   }
 
   /* ---------------- stats view ---------------- */
@@ -305,9 +313,17 @@
       '<canvas id="chartBar" class="chart"></canvas></div>' +
       '<div class="card"><h3 class="section-title">时长趋势</h3>' +
       '<canvas id="chartLine" class="chart"></canvas></div>' +
-      '<div class="card"><h3 class="section-title">本周明细 · 行=周一至周日，列=各大类</h3>' +
-      '<div class="week-scroll"><div class="week-grid" id="weekGrid"></div></div>' +
-      '<p class="tip" style="padding:8px 2px 0">单位：分钟。空白表示该天该大类无记录。</p></div>';
+      '<div class="card"><div class="pano-head"><h3 class="section-title">全景图</h3>' +
+      '<select id="panoRange" class="pano-select">' +
+      '<option value="all">全部</option>' +
+      '<option value="7">近7天</option>' +
+      '<option value="30">近30天</option>' +
+      '<option value="month">本月</option>' +
+      '<option value="year">今年</option>' +
+      '</select></div>' +
+      '<p class="tip" style="padding:2px 2px 8px">上下滑动查看所有日期 · 单位：分钟</p>' +
+      '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
+      '<p class="tip" style="padding:8px 2px 0">空白表示该天该大类无记录。</p></div>';
 
     var rtabs = root.querySelectorAll('[data-r]');
     rtabs.forEach(function (b) { b.addEventListener('click', function () { ui.statsRange = b.dataset.r; renderStats(); }); });
@@ -317,24 +333,43 @@
     drawLegend(document.getElementById('legendCat'), byCat);
     drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors);
     drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals);
-    buildWeekGrid(document.getElementById('weekGrid'));
+    buildPano(document.getElementById('panoGrid'));
+    var pr = root.querySelector('#panoRange');
+    if (pr) { pr.value = ui.panoRange; pr.addEventListener('change', function () { ui.panoRange = pr.value; buildPano(document.getElementById('panoGrid')); }); }
   }
 
-  function buildWeekGrid(el) {
+  function withinDays(d, n) {
+    var pd = parseDate(d), now = new Date();
+    now.setHours(0, 0, 0, 0); pd.setHours(0, 0, 0, 0);
+    var diff = Math.round((now - pd) / 86400000);
+    return diff >= 0 && diff < n;
+  }
+
+  function buildPano(el) {
     if (!el) return;
-    var days = weekDays(ui.statsDate);
     var cats = state.categories;
-    var wdNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    var seen = {}, dates = [];
+    state.records.forEach(function (r) { if (!seen[r.date]) { seen[r.date] = 1; dates.push(r.date); } });
+    var ref = fmtDate(new Date());
+    var filtered = dates.filter(function (d) {
+      if (ui.panoRange === 'all') return true;
+      if (ui.panoRange === '7') return withinDays(d, 7);
+      if (ui.panoRange === '30') return withinDays(d, 30);
+      if (ui.panoRange === 'month') return d.slice(0, 7) === ref.slice(0, 7);
+      if (ui.panoRange === 'year') return d.slice(0, 4) === ref.slice(0, 4);
+      return true;
+    });
+    filtered.sort(function (a, b) { return a < b ? 1 : (a > b ? -1 : 0); });
+    if (!filtered.length) { el.innerHTML = '<div class="pano-empty">该时间段还没有记录</div>'; el.style.gridTemplateColumns = ''; return; }
+    var wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     var html = '';
-    // 表头
     html += '<div class="wg-cell wg-h">日期</div>';
-    cats.forEach(function (c) { html += '<div class="wg-cell wg-h" style="color:' + c.color + '">' + c.icon + c.name + '</div>'; });
+    cats.forEach(function (c) { html += '<div class="wg-cell wg-h">' + esc(c.name) + '</div>'; });
     html += '<div class="wg-cell wg-h">合计</div>';
-    // 每日一行
-    days.forEach(function (d, di) {
+    filtered.forEach(function (d) {
       var recs = state.records.filter(function (r) { return r.date === d; });
       var rowTotal = 0;
-      html += '<div class="wg-cell wg-day">' + wdNames[di] + '<br><span class="wg-date">' + d.slice(5) + '</span></div>';
+      html += '<div class="wg-cell wg-day">' + d.slice(5) + '<br><span class="wg-date">' + wdNames[parseDate(d).getDay()] + '</span></div>';
       cats.forEach(function (c) {
         var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
         rowTotal += m;
@@ -343,9 +378,8 @@
       });
       html += '<div class="wg-cell wg-total">' + (rowTotal > 0 ? rowTotal : '·') + '</div>';
     });
-    // 合计行
     var catTotals = cats.map(function (c) {
-      return days.reduce(function (s, d) {
+      return filtered.reduce(function (s, d) {
         return s + state.records.filter(function (r) { return r.date === d && r.catId === c.id; }).reduce(function (a, r) { return a + r.minutes; }, 0);
       }, 0);
     });
@@ -353,9 +387,8 @@
     html += '<div class="wg-cell wg-foot">合计</div>';
     catTotals.forEach(function (v) { html += '<div class="wg-cell wg-foot">' + (v > 0 ? v : '·') + '</div>'; });
     html += '<div class="wg-cell wg-foot">' + (grand > 0 ? grand : '·') + '</div>';
-
     el.innerHTML = html;
-    el.style.gridTemplateColumns = '120px repeat(' + cats.length + ', minmax(48px, 1fr)) 64px';
+    el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(46px, 1fr)) 56px';
   }
 
   function sumCard(num, lbl) { return '<div class="sum-card"><div class="sum-num">' + num + '</div><div class="sum-lbl">' + lbl + '</div></div>'; }
