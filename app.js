@@ -319,8 +319,8 @@
     box.innerHTML = ui.rows.map(function (row, i) {
       var showDel = ui.rows.length > 1;
       return '<div class="rec-row">' +
-        '<div class="ri-field"><label class="ri-lbl">事项</label>' +
-        '<input type="text" class="ri-content" data-row="' + i + '" placeholder="如：跳绳100个" value="' + esc(row.content) + '"></div>' +
+        '<div class="ri-field"><label class="ri-lbl">事项（可换行）</label>' +
+        '<textarea class="ri-content" data-row="' + i + '" rows="2" placeholder="如：跳绳100个（可换行）">' + esc(row.content) + '</textarea></div>' +
         '<div class="ri-field ri-min"><label class="ri-lbl">分钟</label>' +
         '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
