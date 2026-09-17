@@ -177,6 +177,10 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .pano-modal-head h3 { color: #fff; font-size: 16px; font-weight: 700; }
 .pano-modal-close { width: 34px; height: 34px; font-size: 16px; background: rgba(255,255,255,0.14); color: #fff; }
 .pano-modal-close:active { background: rgba(255,255,255,0.28); }
+.pano-zoom-ctrl { display: flex; align-items: center; gap: 6px; }
+.pzc { border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: #fff; border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.pzc:active { background: rgba(255,255,255,0.26); }
+.pzv { color: #c8d2e0; font-size: 12px; min-width: 40px; text-align: center; }
 .pano-modal-tip { color: #c8d2e0; padding: 0 16px 8px; }
 .land-hint { display: none; text-align: center; color: #9fb0c4; font-size: 12px; padding: 2px 16px 8px; }
 @media (orientation: portrait) { .pano-modal .land-hint { display: block; } }
