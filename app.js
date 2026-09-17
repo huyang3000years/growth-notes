@@ -330,16 +330,28 @@
       '<div class="card"><h3 class="section-title">时长趋势</h3>' +
       '<canvas id="chartLine" class="chart"></canvas></div>' +
       '<div class="card"><div class="pano-head"><h3 class="section-title">全景图</h3>' +
+      '<div class="pano-head-right">' +
       '<select id="panoRange" class="pano-select">' +
       '<option value="all">全部</option>' +
       '<option value="7">近7天</option>' +
       '<option value="30">近30天</option>' +
       '<option value="month">本月</option>' +
       '<option value="year">今年</option>' +
-      '</select></div>' +
+      '</select>' +
+      '<button class="pano-zoom" id="panoZoom" type="button" title="放大横屏查看">⛶ 放大</button>' +
+      '</div></div>' +
       '<p class="tip" style="padding:2px 2px 8px">上下滑动看全部日期（含无记录日），左右可滑动看更多大类；点格子看当日具体事项 · 单位：分钟</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
-      '<p class="tip" style="padding:8px 2px 0">空白表示该天该大类无记录。</p></div>';
+      '<p class="tip" style="padding:8px 2px 0">空白表示该天该大类无记录。</p>' +
+      '<div class="modal-overlay pano-modal" id="panoModal" hidden>' +
+        '<div class="pano-modal-box">' +
+          '<div class="pano-modal-head"><h3>全景图 · 横屏查看更清晰</h3>' +
+          '<button class="modal-close pano-modal-close" id="panoModalClose" type="button" title="关闭">✕</button></div>' +
+          '<p class="tip pano-modal-tip">左右滑动看全部大类 · 点格子看具体事项 · 单位：分钟</p>' +
+          '<p class="land-hint">📱 建议将手机横过来，看得更清楚</p>' +
+          '<div class="pano-modal-scroll"><div class="pano-grid pano-grid-lg" id="panoModalGrid"></div></div>' +
+        '</div>' +
+      '</div></div>';
 
     var rtabs = root.querySelectorAll('[data-r]');
     rtabs.forEach(function (b) { b.addEventListener('click', function () { ui.statsRange = b.dataset.r; renderStats(); }); });
@@ -357,6 +369,20 @@
     });
     var pr = root.querySelector('#panoRange');
     if (pr) { pr.value = ui.panoRange; pr.addEventListener('change', function () { ui.panoRange = pr.value; buildPano(document.getElementById('panoGrid')); }); }
+
+    var pz = root.querySelector('#panoZoom');
+    var pmo = root.querySelector('#panoModal');
+    if (pz && pmo) {
+      pz.addEventListener('click', function () {
+        var mg = document.getElementById('panoModalGrid');
+        buildPano(mg, true);
+        mg.onclick = function (e) { var cell = e.target.closest('[data-date]'); if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || ''); };
+        pmo.hidden = false;
+        var pmc = document.getElementById('panoModalClose');
+        if (pmc) pmc.onclick = function () { pmo.hidden = true; };
+        pmo.onclick = function (e) { if (e.target === pmo) pmo.hidden = true; };
+      });
+    }
   }
 
   function addDays(base, n) { var d = new Date(base.getFullYear(), base.getMonth(), base.getDate()); d.setDate(d.getDate() + n); return d; }
@@ -382,8 +408,9 @@
     return datesBetween(start, end);
   }
 
-  function buildPano(el) {
+  function buildPano(el, large) {
     if (!el) return;
+    el.classList.toggle('pano-grid-lg', !!large);
     var cats = state.categories;
     var dates = panoRangeDates().slice().reverse(); // 最新在上
     if (!dates.length) { el.innerHTML = '<div class="pano-empty">该时间段还没有记录</div>'; el.style.gridTemplateColumns = ''; return; }
@@ -417,7 +444,7 @@
     catTotals.forEach(function (v) { html += '<div class="wg-cell wg-foot">' + (v > 0 ? v : '·') + '</div>'; });
     html += '<div class="wg-cell wg-foot">' + (grand > 0 ? grand : '·') + '</div>';
     el.innerHTML = html;
-    el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px';
+    el.style.gridTemplateColumns = (large ? '120px repeat(' + cats.length + ', minmax(104px, 1fr)) 74px' : '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px');
   }
 
   function showPanoDetail(date, catId) {
