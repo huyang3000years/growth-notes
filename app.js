@@ -782,13 +782,13 @@
     if (settingsPage === 'cats') { renderCatManage(root); return; }
 
     root.innerHTML =
-      '<button class="btn-primary settings-top-btn" id="openCatManage" type="button">分类管理</button>' +
       '<div class="card">' +
       '<div class="search-row">' +
       '<input type="text" id="searchInput" class="modal-input" placeholder="输入关键字，如：跳绳 / 英语" style="margin:0">' +
       '<button class="btn-primary" id="genChartBtn" type="button" style="margin:0; width:auto; padding:12px 16px; white-space:nowrap">生成记录图</button>' +
       '</div>' +
       '<div id="searchResults" class="search-results"></div></div>' +
+      '<button class="btn-primary" id="openCatManage" type="button">分类管理</button>' +
       '<div class="card"><h3 class="section-title">数据</h3>' +
       '<button class="btn-ghost" id="exportBtn">导出数据 (JSON)</button>' +
       '<button class="btn-ghost" id="importBtn">导入数据 (JSON)</button>' +
