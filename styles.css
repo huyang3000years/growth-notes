@@ -159,7 +159,7 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .modal-box { background: #fff; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: 18px; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
 .modal-title { font-size: 16px; margin: 0 0 14px; color: #1f2733; }
 .modal-input { margin-bottom: 12px; }
-.modal-textarea { width: 100%; min-height: 58px; max-height: 58px; resize: none; overflow-y: auto; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 15px; padding: 10px 13px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
+.modal-textarea { width: 100%; min-height: 42px; max-height: 132px; resize: none; overflow-y: auto; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 15px; padding: 10px 13px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
 .modal-textarea:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
 .modal-actions { display: flex; gap: 10px; margin-top: 6px; }
 .modal-actions .btn-ghost, .modal-actions .btn-primary { margin: 0; }
