@@ -2,18 +2,18 @@
   'use strict';
 
   var DEFAULT_CATS = [
-    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B', subs: [{ id: 'sp_b', name: '篮球' }, { id: 'sp_d', name: '街舞' }, { id: 'sp_r', name: '跳绳' }] },
-    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4', subs: [{ id: 'en_r', name: '阅读' }, { id: 'en_l', name: '听力' }, { id: 'en_s', name: '口语' }, { id: 'en_v', name: '视频' }] },
-    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA', subs: [{ id: 'pm_r', name: '背诵' }, { id: 'pm_a', name: '赏析' }] },
-    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703', subs: [] },
-    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0', subs: [] },
-    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F', subs: [] },
-    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2', subs: [] }
+    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B' },
+    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4' },
+    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA' },
+    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703' },
+    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0' },
+    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F' },
+    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2' }
   ];
 
   var ui = {
     catId: null,
-    subId: null,
+    rows: [{ content: '', minutes: '' }],
     recDate: fmtDate(new Date()),
     statsRange: 'week',
     statsDate: fmtDate(new Date())
@@ -46,7 +46,6 @@
     return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
   }
   function findCat(id) { for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i]; return null; }
-  function getSub(cat, id) { if (!cat) return null; for (var i = 0; i < cat.subs.length; i++) if (cat.subs[i].id === id) return cat.subs[i]; return null; }
 
   /* ---------------- local store (无云端) ---------------- */
   function createLocalStore() {
@@ -84,8 +83,6 @@
         case 'addCat': if (payload.cat && !cache.categories.find(function (x) { return x.id === payload.cat.id; })) cache.categories.push(payload.cat); break;
         case 'updateCat': { var c = cache.categories.find(function (x) { return x.id === payload.id; }); if (c) Object.assign(c, payload.fields || {}); break; }
         case 'deleteCat': cache.categories = cache.categories.filter(function (x) { return x.id !== payload.id; }); cache.records = cache.records.filter(function (x) { return x.catId !== payload.id; }); break;
-        case 'addSub': { var c2 = cache.categories.find(function (x) { return x.id === payload.catId; }); if (c2 && !c2.subs.find(function (s) { return s.id === payload.sub.id; })) c2.subs.push(payload.sub); break; }
-        case 'deleteSub': { var c3 = cache.categories.find(function (x) { return x.id === payload.catId; }); if (c3) c3.subs = c3.subs.filter(function (s) { return s.id !== payload.id; }); break; }
         case 'resetSpace': cache.categories = clone(DEFAULT_CATS); cache.records = []; break;
       }
     }
@@ -126,11 +123,11 @@
       .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
     if (!recs.length) return '<li class="rec-empty">这一天还没有记录，开始添加吧～</li>';
     return recs.map(function (r) {
-      var c = findCat(r.catId), sub = getSub(c, r.subId);
+      var c = findCat(r.catId);
       return '<li class="rec-item">' +
         '<span class="rec-dot" style="background:' + (c ? c.color : '#999') + '"></span>' +
         '<div class="rec-main"><div class="rec-title">' + esc(r.content || '') + '</div>' +
-        '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + (sub ? esc(sub.name) : '') + ' · ' + r.date + '</div></div>' +
+        '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + r.date + '</div></div>' +
         '<div class="rec-time">' + r.minutes + '分</div>' +
         '<button class="rec-del" data-del="' + r.id + '">✕</button></li>';
     }).join('');
@@ -140,19 +137,10 @@
     var root = document.getElementById('view-record');
     var cats = state.categories;
     if (!ui.catId && cats.length) ui.catId = cats[0].id;
-    var cat = findCat(ui.catId);
 
     var chips = cats.map(function (c) {
       return '<button class="chip ' + (c.id === ui.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</button>';
     }).join('');
-
-    var subArea = '';
-    if (cat) {
-      var subs = cat.subs.map(function (s) {
-        return '<button class="subchip ' + (s.id === ui.subId ? 'active' : '') + '" data-sub="' + s.id + '">' + esc(s.name) + '</button>';
-      }).join('');
-      subArea = '<div class="subchips">' + subs + '<button class="subchip add" data-add-sub="1">＋ 小类</button></div>';
-    }
 
     root.innerHTML =
       '<div class="card">' +
@@ -160,26 +148,51 @@
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
       '<div class="chips">' + chips + '</div>' +
-      '<label class="lbl">小类</label>' + subArea +
-      '<label class="lbl">事项内容</label>' +
-      '<input type="text" id="recContent" placeholder="例如：跳绳100个 / 背古诗《静夜思》">' +
-      '<label class="lbl">时长（分钟）<span class="req">*</span></label>' +
-      '<input type="number" id="recMinutes" min="1" placeholder="必填，如 20">' +
+      '<label class="lbl">事项内容（必填）与时长·分钟（必填）</label>' +
+      '<div id="recRows" class="rec-rows"></div>' +
+      '<button class="btn-ghost add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
       '</div>' +
       '<h3 class="section-title" id="recDateTitle">' + ui.recDate + ' 的记录</h3>' +
       '<ul class="rec-list" id="recList">' + buildRecordListHTML() + '</ul>';
 
-    root.querySelector('#recDate').addEventListener('change', function (e) { ui.recDate = e.target.value; document.getElementById('recDateTitle').textContent = ui.recDate + ' 的记录'; document.getElementById('recList').innerHTML = buildRecordListHTML(); });
-    var catBtns = root.querySelectorAll('[data-cat]');
-    catBtns.forEach(function (b) { b.addEventListener('click', function () { ui.catId = b.dataset.cat; ui.subId = null; renderRecord(); }); });
-    var subBtns = root.querySelectorAll('[data-sub]');
-    subBtns.forEach(function (b) { b.addEventListener('click', function () { ui.subId = (ui.subId === b.dataset.sub) ? null : b.dataset.sub; renderRecord(); }); });
-    var addSub = root.querySelector('[data-add-sub]');
-    if (addSub) addSub.addEventListener('click', addSubFromRecord);
+    root.querySelector('#recDate').addEventListener('change', function (e) {
+      ui.recDate = e.target.value;
+      var t = document.getElementById('recDateTitle'); if (t) t.textContent = ui.recDate + ' 的记录';
+      refreshRecordList();
+    });
+    root.querySelectorAll('[data-cat]').forEach(function (b) {
+      b.addEventListener('click', function () { ui.catId = b.dataset.cat; renderRecord(); });
+    });
+    root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
-    var delBtns = root.querySelectorAll('[data-del]');
-    delBtns.forEach(function (b) { b.addEventListener('click', function () { store.op('deleteRecord', { id: b.dataset.del }); }); });
+    root.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function () { store.op('deleteRecord', { id: b.dataset.del }); });
+    });
+    renderRows();
+  }
+
+  function renderRows() {
+    var box = document.getElementById('recRows');
+    if (!box) return;
+    if (!ui.rows.length) ui.rows = [{ content: '', minutes: '' }];
+    box.innerHTML = ui.rows.map(function (row, i) {
+      var showDel = ui.rows.length > 1;
+      return '<div class="rec-row">' +
+        '<input type="text" class="ri-content" data-row="' + i + '" placeholder="事项内容（必填）" value="' + esc(row.content) + '">' +
+        '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="分钟" value="' + esc(row.minutes) + '">' +
+        (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
+        '</div>';
+    }).join('');
+    box.querySelectorAll('.ri-content').forEach(function (inp) {
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].content = inp.value; });
+    });
+    box.querySelectorAll('.ri-minutes').forEach(function (inp) {
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].minutes = inp.value; });
+    });
+    box.querySelectorAll('.ri-del').forEach(function (b) {
+      b.addEventListener('click', function () { ui.rows.splice(+b.dataset.delrow, 1); renderRows(); });
+    });
   }
 
   function refreshRecordList() {
@@ -189,23 +202,27 @@
     if (title) title.textContent = ui.recDate + ' 的记录';
   }
 
-  function addSubFromRecord() {
-    var c = findCat(ui.catId); if (!c) return;
-    var name = prompt('为「' + c.name + '」新增小类：'); if (!name) return;
-    store.op('addSub', { catId: c.id, sub: { id: uid(), name: name.trim() } });
-    ui.subId = null; renderRecord();
-  }
-
   function saveRecord() {
-    var content = document.getElementById('recContent').value.trim();
-    var minutes = parseInt(document.getElementById('recMinutes').value, 10);
     if (!ui.catId) { alert('请选择大类'); return; }
-    if (!ui.subId) { alert('请选择小类（可点击「＋ 小类」新增）'); return; }
-    if (!content) { alert('请填写事项内容'); return; }
-    if (!minutes || minutes <= 0) { alert('请填写有效的时长（分钟）'); return; }
-    store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, subId: ui.subId, content: content, minutes: minutes, createdAt: Date.now() } });
-    document.getElementById('recContent').value = '';
-    document.getElementById('recMinutes').value = '';
+    var toSave = [];
+    for (var i = 0; i < ui.rows.length; i++) {
+      var row = ui.rows[i];
+      var content = (row.content || '').trim();
+      var minutesRaw = String(row.minutes || '').trim();
+      var minutes = parseInt(minutesRaw, 10);
+      var hasContent = !!content;
+      var hasMin = !!minutesRaw;
+      if (!hasContent && !hasMin) continue; // 整行空白 → 跳过
+      if (!hasContent) { alert('第 ' + (i + 1) + ' 行：事项内容必填'); return; }
+      if (!hasMin || isNaN(minutes) || minutes <= 0) { alert('第 ' + (i + 1) + ' 行：时长需填写有效的分钟数'); return; }
+      toSave.push({ content: content, minutes: minutes });
+    }
+    if (!toSave.length) { alert('请至少填写一行「事项内容 + 时长」'); return; }
+    toSave.forEach(function (item) {
+      store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
+    });
+    ui.rows = [{ content: '', minutes: '' }];
+    renderRows();
     refreshRecordList();
   }
 
@@ -252,7 +269,10 @@
       '<div class="card"><h3 class="section-title">' + (single ? '当日各分类时长' : '每日时长') + '</h3>' +
       '<canvas id="chartBar" class="chart"></canvas></div>' +
       '<div class="card"><h3 class="section-title">时长趋势</h3>' +
-      '<canvas id="chartLine" class="chart"></canvas></div>';
+      '<canvas id="chartLine" class="chart"></canvas></div>' +
+      '<div class="card"><h3 class="section-title">本周明细 · 行=周一至周日，列=各大类</h3>' +
+      '<div class="week-scroll"><div class="week-grid" id="weekGrid"></div></div>' +
+      '<p class="tip" style="padding:8px 2px 0">单位：分钟。空白表示该天该大类无记录。</p></div>';
 
     var rtabs = root.querySelectorAll('[data-r]');
     rtabs.forEach(function (b) { b.addEventListener('click', function () { ui.statsRange = b.dataset.r; renderStats(); }); });
@@ -262,6 +282,45 @@
     drawLegend(document.getElementById('legendCat'), byCat);
     drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors);
     drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals);
+    buildWeekGrid(document.getElementById('weekGrid'));
+  }
+
+  function buildWeekGrid(el) {
+    if (!el) return;
+    var days = weekDays(ui.statsDate);
+    var cats = state.categories;
+    var wdNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    var html = '';
+    // 表头
+    html += '<div class="wg-cell wg-h">日期</div>';
+    cats.forEach(function (c) { html += '<div class="wg-cell wg-h" style="color:' + c.color + '">' + c.icon + c.name + '</div>'; });
+    html += '<div class="wg-cell wg-h">合计</div>';
+    // 每日一行
+    days.forEach(function (d, di) {
+      var recs = state.records.filter(function (r) { return r.date === d; });
+      var rowTotal = 0;
+      html += '<div class="wg-cell wg-day">' + wdNames[di] + '<br><span class="wg-date">' + d.slice(5) + '</span></div>';
+      cats.forEach(function (c) {
+        var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+        rowTotal += m;
+        if (m > 0) html += '<div class="wg-cell has" style="background:' + c.color + '22;color:' + c.color + '">' + m + '</div>';
+        else html += '<div class="wg-cell">·</div>';
+      });
+      html += '<div class="wg-cell wg-total">' + (rowTotal > 0 ? rowTotal : '·') + '</div>';
+    });
+    // 合计行
+    var catTotals = cats.map(function (c) {
+      return days.reduce(function (s, d) {
+        return s + state.records.filter(function (r) { return r.date === d && r.catId === c.id; }).reduce(function (a, r) { return a + r.minutes; }, 0);
+      }, 0);
+    });
+    var grand = catTotals.reduce(function (s, v) { return s + v; }, 0);
+    html += '<div class="wg-cell wg-foot">合计</div>';
+    catTotals.forEach(function (v) { html += '<div class="wg-cell wg-foot">' + (v > 0 ? v : '·') + '</div>'; });
+    html += '<div class="wg-cell wg-foot">' + (grand > 0 ? grand : '·') + '</div>';
+
+    el.innerHTML = html;
+    el.style.gridTemplateColumns = '120px repeat(' + cats.length + ', minmax(48px, 1fr)) 64px';
   }
 
   function sumCard(num, lbl) { return '<div class="sum-card"><div class="sum-num">' + num + '</div><div class="sum-lbl">' + lbl + '</div></div>'; }
@@ -270,18 +329,14 @@
   function renderSettings() {
     var root = document.getElementById('view-settings');
     var cats = state.categories.map(function (c) {
-      var subs = c.subs.length
-        ? c.subs.map(function (s) { return '<span class="tag">' + esc(s.name) + ' <button class="tag-x" data-delsub="' + c.id + '|' + s.id + '">✕</button></span>'; }).join('')
-        : '<span class="muted">暂无小类</span>';
       return '<div class="cat-manage">' +
         '<div class="cm-head"><span class="cm-icon" style="background:' + c.color + '">' + c.icon + '</span>' +
         '<input class="cm-name" value="' + esc(c.name) + '" data-rename="' + c.id + '">' +
-        '<button class="cm-del" data-delcat="' + c.id + '">删除</button></div>' +
-        '<div class="cm-subs">' + subs + '<button class="tag add" data-addsub="' + c.id + '">＋ 小类</button></div></div>';
+        '<button class="cm-del" data-delcat="' + c.id + '">删除</button></div></div>';
     }).join('');
 
     root.innerHTML =
-      '<div class="card"><h3 class="section-title">分类管理</h3>' + cats +
+      '<div class="card"><h3 class="section-title">分类管理（大类）</h3>' + cats +
       '<button class="btn-ghost" id="addCat">＋ 新增大类</button></div>' +
       '<div class="card"><h3 class="section-title">数据</h3>' +
       '<button class="btn-ghost" id="exportBtn">导出数据 (JSON)</button>' +
@@ -291,24 +346,22 @@
 
     var renames = root.querySelectorAll('[data-rename]');
     renames.forEach(function (inp) { inp.addEventListener('change', function () { store.op('updateCat', { id: inp.dataset.rename, fields: { name: inp.value.trim() || findCat(inp.dataset.rename).name } }); }); });
-    var delsub = root.querySelectorAll('[data-delsub]');
-    delsub.forEach(function (b) { b.addEventListener('click', function () { var p = b.dataset.delsub.split('|'); store.op('deleteSub', { catId: p[0], id: p[1] }); }); });
     var delcat = root.querySelectorAll('[data-delcat]');
-    delcat.forEach(function (b) { b.addEventListener('click', function () { if (confirm('删除该大类及其下所有小类与记录？')) store.op('deleteCat', { id: b.dataset.delcat }); }); });
-    var addsub = root.querySelectorAll('[data-addsub]');
-    addsub.forEach(function (b) { b.addEventListener('click', function () { var c = findCat(b.dataset.addsub); var name = prompt('新增小类名称：'); if (!name) return; store.op('addSub', { catId: b.dataset.addsub, sub: { id: uid(), name: name.trim() } }); }); });
-    root.querySelector('#addCat').addEventListener('click', function () {
-      var name = prompt('新增大类名称：'); if (!name) return;
-      var colors = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B'];
-      var icons = ['⭐', '🌟', '🎯', '🚀', '🌈', '💡', '🔥', '🍀'];
-      var i = state.categories.length;
-      store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: icons[i % icons.length], color: colors[i % colors.length], subs: [] } });
-    });
+    delcat.forEach(function (b) { b.addEventListener('click', function () { if (confirm('删除该大类及其下所有记录？')) store.op('deleteCat', { id: b.dataset.delcat }); }); });
+    root.querySelector('#addCat').addEventListener('click', addCatHandler);
     root.querySelector('#exportBtn').addEventListener('click', exportData);
     root.querySelector('#importBtn').addEventListener('click', importData);
     root.querySelector('#resetBtn').addEventListener('click', function () {
       if (confirm('确定清空所有分类和记录？此操作不可恢复。')) store.op('resetSpace', {});
     });
+  }
+
+  function addCatHandler() {
+    var name = prompt('新增大类名称：'); if (!name) return;
+    var colors = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B'];
+    var icons = ['⭐', '🌟', '🎯', '🚀', '🌈', '💡', '🔥', '🍀'];
+    var i = state.categories.length;
+    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: icons[i % icons.length], color: colors[i % colors.length] } });
   }
 
   function exportData() {
@@ -330,7 +383,7 @@
           if (d && d.categories) {
             if (confirm('导入将覆盖当前数据，确定？')) {
               store.op('resetSpace', {});
-              d.categories.forEach(function (c) { store.op('addCat', { cat: c }); });
+              d.categories.forEach(function (c) { var nc = Object.assign({}, c); delete nc.subs; store.op('addCat', { cat: nc }); });
               (d.records || []).forEach(function (r) { store.op('addRecord', { record: r }); });
               alert('导入成功');
             }
