@@ -82,6 +82,8 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .ri-field.ri-min { flex: 0 0 92px; }
 .ri-lbl { font-size: 12px; color: #8a94a6; margin-bottom: 4px; }
 .ri-content, .ri-minutes { width: 100%; box-sizing: border-box; }
+textarea.ri-content { min-height: 52px; max-height: 132px; resize: none; overflow-y: auto; white-space: pre-wrap; word-break: break-word; line-height: 1.45; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
+textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
 .ri-del { flex: 0 0 auto; border: none; background: #f3f6fc; color: #aab2c0; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; margin-bottom: 2px; }
 .ri-del:active { background: #ffe3ea; color: #ef476f; }
 .add-row { margin-top: 6px; }
@@ -391,4 +393,6 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
   .bd-group-head b { color: #8fb4ff; }
   .bd-rule { border-color: #2a3650; }
   .bd-items .mr-title { color: #e6ecf6; }
+  textarea.ri-content { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  textarea.ri-content:focus { background: #223052; border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(122,162,255,0.25); }
 }
