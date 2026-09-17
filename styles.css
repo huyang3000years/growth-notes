@@ -37,6 +37,10 @@ body {
   margin-bottom: 14px;
   box-shadow: 0 3px 12px rgba(31,39,51,0.06);
 }
+.dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.dash-card { background: linear-gradient(135deg, #5b8def 0%, #7aa2ff 100%); border-radius: 16px; padding: 14px 8px; text-align: center; color: #fff; box-shadow: 0 4px 14px rgba(91,141,239,0.25); }
+.dash-num { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.dash-lbl { font-size: 12px; opacity: 0.92; margin-top: 4px; }
 .section-title { margin: 4px 0 12px; font-size: 15px; font-weight: 700; color: #2b3442; }
 .lbl { display: block; font-size: 13px; color: #6b7585; margin: 12px 0 6px; font-weight: 600; }
 .req { color: #ef476f; }
@@ -349,6 +353,7 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
   .sum-card { background: #182135; box-shadow: 0 3px 12px rgba(0,0,0,0.35); }
   .sum-num { color: #8fb4ff; }
   .sum-lbl { color: #9aa6bd; }
+  .dash-card { background: linear-gradient(135deg, #2b4a8c 0%, #3a5fb0 100%); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
   .range-tabs { background: #1e2840; }
   .range-tabs button { color: #9aa6bd; }
   .range-tabs button.active { background: #2a3650; color: #8fb4ff; }
