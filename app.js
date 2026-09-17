@@ -156,7 +156,12 @@
       '<button class="btn-ghost add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
       '</div>' +
-      '<h3 class="section-title" id="recDateTitle">' + ui.recDate + ' 的记录</h3>' +
+      '<div class="rec-nav">' +
+      '<div class="rec-nav-title" id="recDateTitle">' + ui.recDate + ' 的记录</div>' +
+      '<div class="rec-nav-btns">' +
+      '<button class="rec-nav-btn" id="dayPrev" type="button">‹ 前一天</button>' +
+      '<button class="rec-nav-btn" id="dayNext" type="button">后一天 ›</button>' +
+      '</div></div>' +
       '<ul class="rec-list" id="recList">' + buildRecordListHTML() + '</ul>';
 
     root.querySelector('#recDate').addEventListener('change', function (e) {
@@ -175,6 +180,8 @@
     root.querySelectorAll('[data-edit]').forEach(function (b) {
       b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
     });
+    var dp = root.querySelector('#dayPrev'); if (dp) dp.addEventListener('click', function () { navigateDay(-1); });
+    var dn = root.querySelector('#dayNext'); if (dn) dn.addEventListener('click', function () { navigateDay(1); });
     renderRows();
   }
 
@@ -201,6 +208,15 @@
     box.querySelectorAll('.ri-del').forEach(function (b) {
       b.addEventListener('click', function () { ui.rows.splice(+b.dataset.delrow, 1); renderRows(); });
     });
+  }
+
+  function navigateDay(delta) {
+    var d = parseDate(ui.recDate);
+    d.setDate(d.getDate() + delta);
+    ui.recDate = fmtDate(d);
+    var inp = document.getElementById('recDate');
+    if (inp) inp.value = ui.recDate;
+    refreshRecordList();
   }
 
   function refreshRecordList() {
@@ -321,7 +337,7 @@
       '<option value="month">本月</option>' +
       '<option value="year">今年</option>' +
       '</select></div>' +
-      '<p class="tip" style="padding:2px 2px 8px">上下滑动查看所有日期 · 单位：分钟</p>' +
+      '<p class="tip" style="padding:2px 2px 8px">上下滑动看全部日期（含无记录日），左右可滑动看更多大类；点格子看当日具体事项 · 单位：分钟</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
       '<p class="tip" style="padding:8px 2px 0">空白表示该天该大类无记录。</p></div>';
 
@@ -333,62 +349,107 @@
     drawLegend(document.getElementById('legendCat'), byCat);
     drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors);
     drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals);
-    buildPano(document.getElementById('panoGrid'));
+    var pg = document.getElementById('panoGrid');
+    buildPano(pg);
+    if (pg) pg.addEventListener('click', function (e) {
+      var cell = e.target.closest('[data-date]');
+      if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || '');
+    });
     var pr = root.querySelector('#panoRange');
     if (pr) { pr.value = ui.panoRange; pr.addEventListener('change', function () { ui.panoRange = pr.value; buildPano(document.getElementById('panoGrid')); }); }
   }
 
-  function withinDays(d, n) {
-    var pd = parseDate(d), now = new Date();
-    now.setHours(0, 0, 0, 0); pd.setHours(0, 0, 0, 0);
-    var diff = Math.round((now - pd) / 86400000);
-    return diff >= 0 && diff < n;
+  function addDays(base, n) { var d = new Date(base.getFullYear(), base.getMonth(), base.getDate()); d.setDate(d.getDate() + n); return d; }
+  function firstOfMonth(base) { return new Date(base.getFullYear(), base.getMonth(), 1); }
+  function datesBetween(s, e) {
+    var arr = [], d = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+    var end = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+    while (d <= end) { arr.push(fmtDate(d)); d.setDate(d.getDate() + 1); }
+    return arr;
+  }
+  function panoRangeDates() {
+    var ref = new Date(); ref.setHours(0, 0, 0, 0);
+    var start, end = ref;
+    if (ui.panoRange === '7') start = addDays(ref, -6);
+    else if (ui.panoRange === '30') start = addDays(ref, -29);
+    else if (ui.panoRange === 'month') { start = firstOfMonth(ref); end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0); }
+    else if (ui.panoRange === 'year') { start = new Date(ref.getFullYear(), 0, 1); end = new Date(ref.getFullYear(), 11, 31); }
+    else {
+      var ds = state.records.map(function (r) { return r.date; });
+      if (!ds.length) start = addDays(ref, -6);
+      else { var min = ds.reduce(function (a, b) { return a < b ? a : b; }); start = parseDate(min); }
+    }
+    return datesBetween(start, end);
   }
 
   function buildPano(el) {
     if (!el) return;
     var cats = state.categories;
-    var seen = {}, dates = [];
-    state.records.forEach(function (r) { if (!seen[r.date]) { seen[r.date] = 1; dates.push(r.date); } });
-    var ref = fmtDate(new Date());
-    var filtered = dates.filter(function (d) {
-      if (ui.panoRange === 'all') return true;
-      if (ui.panoRange === '7') return withinDays(d, 7);
-      if (ui.panoRange === '30') return withinDays(d, 30);
-      if (ui.panoRange === 'month') return d.slice(0, 7) === ref.slice(0, 7);
-      if (ui.panoRange === 'year') return d.slice(0, 4) === ref.slice(0, 4);
-      return true;
-    });
-    filtered.sort(function (a, b) { return a < b ? 1 : (a > b ? -1 : 0); });
-    if (!filtered.length) { el.innerHTML = '<div class="pano-empty">该时间段还没有记录</div>'; el.style.gridTemplateColumns = ''; return; }
+    var dates = panoRangeDates().slice().reverse(); // 最新在上
+    if (!dates.length) { el.innerHTML = '<div class="pano-empty">该时间段还没有记录</div>'; el.style.gridTemplateColumns = ''; return; }
     var wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     var html = '';
-    html += '<div class="wg-cell wg-h">日期</div>';
+    // 表头
+    html += '<div class="wg-cell wg-h wg-sticky-col">日期</div>';
     cats.forEach(function (c) { html += '<div class="wg-cell wg-h">' + esc(c.name) + '</div>'; });
     html += '<div class="wg-cell wg-h">合计</div>';
-    filtered.forEach(function (d) {
+    // 每日一行（含无记录日）
+    dates.forEach(function (d) {
       var recs = state.records.filter(function (r) { return r.date === d; });
       var rowTotal = 0;
-      html += '<div class="wg-cell wg-day">' + d.slice(5) + '<br><span class="wg-date">' + wdNames[parseDate(d).getDay()] + '</span></div>';
+      html += '<div class="wg-cell wg-day wg-sticky-col" data-date="' + d + '" data-cat="">' + d.slice(5) + '<br><span class="wg-date">' + wdNames[parseDate(d).getDay()] + '</span></div>';
       cats.forEach(function (c) {
         var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
         rowTotal += m;
-        if (m > 0) html += '<div class="wg-cell has" style="background:' + c.color + '22;color:' + c.color + '">' + m + '</div>';
-        else html += '<div class="wg-cell">·</div>';
+        if (m > 0) html += '<div class="wg-cell has wg-click" data-date="' + d + '" data-cat="' + c.id + '" style="background:' + c.color + '22;color:' + c.color + '">' + m + '</div>';
+        else html += '<div class="wg-cell wg-zero" data-date="' + d + '" data-cat="' + c.id + '">·</div>';
       });
       html += '<div class="wg-cell wg-total">' + (rowTotal > 0 ? rowTotal : '·') + '</div>';
     });
+    // 合计行
     var catTotals = cats.map(function (c) {
-      return filtered.reduce(function (s, d) {
+      return dates.reduce(function (s, d) {
         return s + state.records.filter(function (r) { return r.date === d && r.catId === c.id; }).reduce(function (a, r) { return a + r.minutes; }, 0);
       }, 0);
     });
     var grand = catTotals.reduce(function (s, v) { return s + v; }, 0);
-    html += '<div class="wg-cell wg-foot">合计</div>';
+    html += '<div class="wg-cell wg-foot wg-sticky-col">合计</div>';
     catTotals.forEach(function (v) { html += '<div class="wg-cell wg-foot">' + (v > 0 ? v : '·') + '</div>'; });
     html += '<div class="wg-cell wg-foot">' + (grand > 0 ? grand : '·') + '</div>';
     el.innerHTML = html;
-    el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(46px, 1fr)) 56px';
+    el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px';
+  }
+
+  function showPanoDetail(date, catId) {
+    var recs = state.records.filter(function (r) { return r.date === date && (!catId || r.catId === catId); })
+      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var c = catId ? findCat(catId) : null;
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var body;
+    if (!recs.length) {
+      body = '<p class="modal-empty">' + date + (c ? ' · ' + esc(c.name) : '') + ' 暂无记录</p>';
+    } else {
+      body = '<ul class="modal-rec-list">' + recs.map(function (r) {
+        var cc = findCat(r.catId);
+        return '<li class="mr-item">' +
+          '<span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
+          '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
+          '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + '</div></div>' +
+          '<div class="mr-min">' + r.minutes + '分</div></li>';
+      }).join('') + '</ul>';
+    }
+    overlay.innerHTML =
+      '<div class="modal-box">' +
+      '<div class="modal-title-row"><h3 class="modal-title">' + date + (c ? ' · ' + esc(c.name) : ' · 当日全部') + '</h3>' +
+      '<button class="modal-close" id="pdClose" type="button">✕</button></div>' +
+      body +
+      '<div class="modal-actions"><button type="button" class="btn-primary" id="pdOk">知道了</button></div></div>';
+    document.body.appendChild(overlay);
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelector('#pdClose').addEventListener('click', close);
+    overlay.querySelector('#pdOk').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   }
 
   function sumCard(num, lbl) { return '<div class="sum-card"><div class="sum-num">' + num + '</div><div class="sum-lbl">' + lbl + '</div></div>'; }
