@@ -21,6 +21,7 @@
     panoScale: 1
   };
   var currentView = 'record';
+  var suppressClick = false;
   var store = createLocalStore();
   var state = store.getState(); // 与 store 内部 cache 同一引用，原地修改
 
@@ -48,6 +49,22 @@
     return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
   }
   function findCat(id) { for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i]; return null; }
+
+  /* 长按拖动排序辅助 */
+  function chipUnderPoint(container, x, y, self) {
+    var best = null;
+    container.querySelectorAll('.chip').forEach(function (c) {
+      if (c === self) return;
+      var r = c.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) best = c;
+    });
+    return best;
+  }
+  function commitChipOrder(container) {
+    var ids = [];
+    container.querySelectorAll('.chip').forEach(function (c) { ids.push(c.dataset.cat); });
+    store.op('reorderCats', { order: ids });
+  }
 
   /* ---------------- local store (无云端) ---------------- */
   function createLocalStore() {
@@ -85,6 +102,14 @@
         case 'addCat': if (payload.cat && !cache.categories.find(function (x) { return x.id === payload.cat.id; })) cache.categories.push(payload.cat); break;
         case 'updateCat': { var c = cache.categories.find(function (x) { return x.id === payload.id; }); if (c) Object.assign(c, payload.fields || {}); break; }
         case 'deleteCat': cache.categories = cache.categories.filter(function (x) { return x.id !== payload.id; }); cache.records = cache.records.filter(function (x) { return x.catId !== payload.id; }); break;
+        case 'reorderCats': {
+          var ord = payload.order || []; var cmap = {};
+          cache.categories.forEach(function (c) { cmap[c.id] = c; });
+          var narr = [];
+          ord.forEach(function (id) { if (cmap[id]) { narr.push(cmap[id]); delete cmap[id]; } });
+          Object.keys(cmap).forEach(function (id) { narr.push(cmap[id]); });
+          cache.categories = narr; break;
+        }
         case 'resetSpace': cache.categories = clone(DEFAULT_CATS); cache.records = []; break;
       }
     }
@@ -153,6 +178,7 @@
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
       '<div class="chips">' + chips + '</div>' +
+      '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序</p>' +
       '<div id="recRows" class="rec-rows"></div>' +
       '<button class="btn-ghost add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
@@ -171,8 +197,63 @@
       refreshRecordList();
     });
     root.querySelectorAll('[data-cat]').forEach(function (b) {
-      b.addEventListener('click', function () { ui.catId = b.dataset.cat; renderRecord(); });
+      b.addEventListener('click', function () {
+        if (suppressClick) return;
+        ui.catId = b.dataset.cat; renderRecord();
+      });
     });
+    /* 长按拖动排序（首页大类图标） */
+    (function setupChipDrag() {
+      var chipsEl = root.querySelector('.chips');
+      if (!chipsEl) return;
+      suppressClick = false;
+      chipsEl.querySelectorAll('.chip').forEach(function (chip) {
+        var pressTimer = null, longFired = false, startX = 0, startY = 0;
+        chip.addEventListener('pointerdown', function (e) {
+          if (e.button && e.button !== 0) return;
+          startX = e.clientX; startY = e.clientY; longFired = false;
+          pressTimer = setTimeout(function () {
+            longFired = true;
+            chip.classList.add('dragging');
+            chipsEl.classList.add('reordering');
+            if (chip.setPointerCapture) { try { chip.setPointerCapture(e.pointerId); } catch (_) {} }
+          }, 450);
+          function onMove(ev) {
+            if (!longFired) {
+              var dx = ev.clientX - startX, dy = ev.clientY - startY;
+              if (Math.abs(dx) > 10 || Math.abs(dy) > 10) { clearTimeout(pressTimer); detach(); }
+              return;
+            }
+            ev.preventDefault();
+            var target = chipUnderPoint(chipsEl, ev.clientX, ev.clientY, chip);
+            if (target && target !== chip) {
+              var r = target.getBoundingClientRect();
+              if ((ev.clientX - r.left) > r.width / 2) chipsEl.insertBefore(chip, target.nextSibling);
+              else chipsEl.insertBefore(chip, target);
+            }
+          }
+          function onUp() {
+            clearTimeout(pressTimer);
+            if (longFired) {
+              chip.classList.remove('dragging');
+              chipsEl.classList.remove('reordering');
+              commitChipOrder(chipsEl);
+              suppressClick = true;
+              setTimeout(function () { suppressClick = false; }, 60);
+            }
+            detach();
+          }
+          function detach() {
+            chip.removeEventListener('pointermove', onMove);
+            chip.removeEventListener('pointerup', onUp);
+            chip.removeEventListener('pointercancel', onUp);
+          }
+          chip.addEventListener('pointermove', onMove);
+          chip.addEventListener('pointerup', onUp);
+          chip.addEventListener('pointercancel', onUp);
+        });
+      });
+    })();
     root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
     root.querySelectorAll('[data-del]').forEach(function (b) {
