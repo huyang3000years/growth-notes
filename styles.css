@@ -125,7 +125,14 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .rec-title { font-size: 14px; font-weight: 600; color: #1f2733; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec-meta { font-size: 11px; color: #8a94a6; margin-top: 3px; }
 .rec-time { font-size: 14px; font-weight: 800; color: #5b8def; flex: 0 0 auto; }
-.rec-del { border: none; background: #f3f6fc; color: #aab2c0; width: 26px; height: 26px; border-radius: 50%; font-size: 13px; flex: 0 0 auto; }
+.rec-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.rec-edit { border: none; background: #eef4ff; color: #5b8def; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; flex: 0 0 auto; }
+.rec-edit:active { background: #dbe7ff; }
+.rec-del { border: none; background: #f3f6fc; color: #aab2c0; width: 28px; height: 28px; border-radius: 50%; font-size: 13px; flex: 0 0 auto; }
+.rec-del:active { background: #ffe3ea; color: #ef476f; }
+.rec-item.editing { background: #fffaf0; border-radius: 10px; padding-left: 8px; padding-right: 8px; }
+.edit-banner { background: #fff4dc; color: #b8860b; font-size: 13px; padding: 9px 12px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.link-btn { border: none; background: transparent; color: #5b8def; font-size: 13px; text-decoration: underline; padding: 2px 4px; }
 .rec-empty { text-align: center; color: #aab2c0; font-size: 13px; padding: 24px 0; }
 
 .stats-head { display: flex; align-items: center; gap: 10px; }
