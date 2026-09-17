@@ -17,7 +17,8 @@
     recDate: fmtDate(new Date()),
     statsRange: 'week',
     statsDate: fmtDate(new Date()),
-    panoRange: 'all'
+    panoRange: 'all',
+    panoScale: 1
   };
   var currentView = 'record';
   var store = createLocalStore();
@@ -346,7 +347,13 @@
       '<div class="modal-overlay pano-modal" id="panoModal" hidden>' +
         '<div class="pano-modal-box">' +
           '<div class="pano-modal-head"><h3>全景图 · 横屏查看更清晰</h3>' +
-          '<button class="modal-close pano-modal-close" id="panoModalClose" type="button" title="关闭">✕</button></div>' +
+          '<div class="pano-zoom-ctrl">' +
+            '<button class="pzc" id="panoZoomOut" type="button" title="缩小">A−</button>' +
+            '<span class="pzv" id="panoZoomVal">100%</span>' +
+            '<button class="pzc" id="panoZoomIn" type="button" title="放大">A+</button>' +
+            '<button class="pzc" id="panoZoomFit" type="button" title="适应屏幕">适应</button>' +
+            '<button class="modal-close pano-modal-close" id="panoModalClose" type="button" title="关闭">✕</button>' +
+          '</div></div>' +
           '<p class="tip pano-modal-tip">左右滑动看全部大类 · 点格子看具体事项 · 单位：分钟</p>' +
           '<p class="land-hint">📱 建议将手机横过来，看得更清楚</p>' +
           '<div class="pano-modal-scroll"><div class="pano-grid pano-grid-lg" id="panoModalGrid"></div></div>' +
@@ -383,6 +390,18 @@
         pmo.onclick = function (e) { if (e.target === pmo) pmo.hidden = true; };
       });
     }
+    function applyPanoScale() {
+      var mg = document.getElementById('panoModalGrid');
+      if (mg) buildPano(mg, true);
+      var v = root.querySelector('#panoZoomVal');
+      if (v) v.textContent = Math.round((ui.panoScale || 1) * 100) + '%';
+    }
+    var zin = root.querySelector('#panoZoomIn');
+    var zout = root.querySelector('#panoZoomOut');
+    var zfit = root.querySelector('#panoZoomFit');
+    if (zin) zin.addEventListener('click', function () { ui.panoScale = Math.min(1.8, (ui.panoScale || 1) + 0.1); applyPanoScale(); });
+    if (zout) zout.addEventListener('click', function () { ui.panoScale = Math.max(0.6, (ui.panoScale || 1) - 0.1); applyPanoScale(); });
+    if (zfit) zfit.addEventListener('click', function () { ui.panoScale = 1; applyPanoScale(); });
   }
 
   function addDays(base, n) { var d = new Date(base.getFullYear(), base.getMonth(), base.getDate()); d.setDate(d.getDate() + n); return d; }
@@ -444,7 +463,14 @@
     catTotals.forEach(function (v) { html += '<div class="wg-cell wg-foot">' + (v > 0 ? v : '·') + '</div>'; });
     html += '<div class="wg-cell wg-foot">' + (grand > 0 ? grand : '·') + '</div>';
     el.innerHTML = html;
-    el.style.gridTemplateColumns = (large ? '120px repeat(' + cats.length + ', minmax(104px, 1fr)) 74px' : '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px');
+    if (large) {
+      var scale = ui.panoScale || 1;
+      // 弹性列：所有大类均分剩余宽度，保证在横屏下覆盖全部列、无需横滑
+      el.style.gridTemplateColumns = '100px repeat(' + cats.length + ', minmax(40px, 1fr)) 64px';
+      el.style.fontSize = (15 * scale) + 'px';
+    } else {
+      el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px';
+    }
   }
 
   function showPanoDetail(date, catId) {
