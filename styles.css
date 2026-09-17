@@ -54,6 +54,8 @@ input[type=text], input[type=date], input[type=number] {
 input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+#editCats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#editCats .chip { width: 100%; justify-content: center; }
 .chip {
   border: 1px solid #e2e8f2;
   background: #fff;
@@ -307,7 +309,6 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .bd-item b { margin-left: auto; color: #5b8def; font-weight: 800; }
 
 /* 当日明细：按大类分组（大类名 + 总时长 → 横线 → 具体事项） */
-.settings-top-btn { margin-top: 0; margin-bottom: 14px; }
 .bd-group { margin-bottom: 14px; }
 .bd-group:last-child { margin-bottom: 4px; }
 .bd-group-head { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #1f2733; }
