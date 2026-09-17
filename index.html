@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#5b8def">
+  <title>🌱 成长小记</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="logo">🌱 成长小记</div>
+      <div class="sub">6岁宝贝每日学习启蒙记录</div>
+    </header>
+    <main class="app-main">
+      <section id="view-record" class="tab-view active"></section>
+      <section id="view-stats" class="tab-view"></section>
+      <section id="view-settings" class="tab-view"></section>
+    </main>
+    <nav class="tabbar">
+      <button data-view="record" class="active"><span>📝</span>记录</button>
+      <button data-view="stats"><span>📊</span>统计</button>
+      <button data-view="settings"><span>⚙️</span>设置</button>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
