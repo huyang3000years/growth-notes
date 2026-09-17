@@ -201,7 +201,6 @@
       '<div class="chips">' + chips + '</div>' +
       '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序</p>' +
       '<div id="recRows" class="rec-rows"></div>' +
-      '<button class="btn-ghost add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
       '</div>' +
       '<div class="rec-nav">' +
@@ -283,7 +282,7 @@
     renderRows();
   }
 
-  function renderRows() {
+  function renderRows(focusIdx) {
     var box = document.getElementById('recRows');
     if (!box) return;
     if (!ui.rows.length) ui.rows = [{ content: '', minutes: '' }];
@@ -298,14 +297,25 @@
         '</div>';
     }).join('');
     box.querySelectorAll('.ri-content').forEach(function (inp) {
-      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].content = inp.value; });
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].content = inp.value; maybeAutoAdd(+inp.dataset.row); });
     });
     box.querySelectorAll('.ri-minutes').forEach(function (inp) {
-      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].minutes = inp.value; });
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].minutes = inp.value; maybeAutoAdd(+inp.dataset.row); });
     });
     box.querySelectorAll('.ri-del').forEach(function (b) {
       b.addEventListener('click', function () { ui.rows.splice(+b.dataset.delrow, 1); renderRows(); });
     });
+    if (focusIdx != null && focusIdx >= 0) {
+      var fEl = box.querySelector('.ri-content[data-row="' + focusIdx + '"]');
+      if (fEl) { fEl.focus(); var len = fEl.value.length; try { fEl.setSelectionRange(len, len); } catch (e) {} }
+    }
+  }
+  /* 在最后一行输入内容时自动追加一行空行，免去「新增事项」按钮 */
+  function maybeAutoAdd(idx) {
+    if (idx !== ui.rows.length - 1) return;
+    var last = ui.rows[idx];
+    var has = (last.content && last.content.trim()) || (last.minutes != null && String(last.minutes).trim());
+    if (has) { ui.rows.push({ content: '', minutes: '' }); renderRows(idx); }
   }
 
   function navigateDay(delta) {
@@ -726,38 +736,37 @@
     try { if (window.screen && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
   }
 
-  /* 点击柱状/折线：显示某日各分类学习时长明细 */
+  /* 点击柱状/折线：显示某日各分类学习时长明细（按大类分组：大类名+总时长 → 横线 → 具体事项） */
   function showDayBreakdown(date, catId) {
-    var recs = state.records.filter(function (r) { return r.date === date && (!catId || r.catId === catId); })
-      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var recs = state.records.filter(function (r) { return r.date === date && (!catId || r.catId === catId); });
     var c = catId ? findCat(catId) : null;
+    var groups = {};
+    recs.forEach(function (r) { (groups[r.catId] = groups[r.catId] || []).push(r); });
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    var breakdown = '';
-    if (!catId) {
-      var perCat = state.categories.map(function (cat) {
-        return { name: cat.name, color: cat.color, m: recs.filter(function (r) { return r.catId === cat.id; }).reduce(function (s, r) { return s + r.minutes; }, 0) };
-      }).filter(function (x) { return x.m > 0; });
-      if (perCat.length) {
-        breakdown = '<div class="bd-list">' + perCat.map(function (x) {
-          return '<div class="bd-item"><span class="bd-dot" style="background:' + x.color + '"></span>' + esc(x.name) + '<b>' + x.m + '分</b></div>';
-        }).join('') + '</div>';
-      }
-    }
-    var list = recs.length
-      ? '<ul class="modal-rec-list">' + recs.map(function (r) {
-          var cc = findCat(r.catId);
-          return '<li class="mr-item"><span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
-            '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
-            '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + '</div></div>' +
-            '<div class="mr-min">' + r.minutes + '分</div></li>';
-        }).join('') + '</ul>'
-      : '<p class="modal-empty">' + date + ' 暂无记录</p>';
+    var groupHtml = '';
+    state.categories.forEach(function (cat) {
+      if (catId && cat.id !== catId) return;
+      var grp = (groups[cat.id] || []).slice().sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      if (!grp.length) return;
+      var gTotal = grp.reduce(function (s, r) { return s + r.minutes; }, 0);
+      var items = grp.map(function (r) {
+        return '<li class="mr-item">' +
+          '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div></div>' +
+          '<div class="mr-min">' + r.minutes + '分</div></li>';
+      }).join('');
+      groupHtml += '<div class="bd-group">' +
+        '<div class="bd-group-head"><span class="bd-dot" style="background:' + cat.color + '"></span>' + esc(cat.name) + '<b>' + gTotal + '分</b></div>' +
+        '<div class="bd-rule"></div>' +
+        '<ul class="bd-items">' + items + '</ul>' +
+        '</div>';
+    });
+    if (!groupHtml) groupHtml = '<p class="modal-empty">' + date + (c ? ' · ' + esc(c.name) : '') + ' 暂无记录</p>';
     overlay.innerHTML =
       '<div class="modal-box">' +
       '<div class="modal-title-row"><h3 class="modal-title">' + date + (c ? ' · ' + esc(c.name) : ' · 当日明细') + '</h3>' +
       '<button class="modal-close" id="bdClose" type="button">✕</button></div>' +
-      breakdown + list +
+      groupHtml +
       '<div class="modal-actions"><button type="button" class="btn-primary" id="bdOk">知道了</button></div></div>';
     document.body.appendChild(overlay);
     function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
@@ -773,20 +782,17 @@
     var root = document.getElementById('view-settings');
     if (settingsPage === 'cats') { renderCatManage(root); return; }
 
-    var catsPreview = state.categories.map(function (c) {
-      return '<span class="cm-pill" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</span>';
-    }).join('');
+    var root = document.getElementById('view-settings');
+    if (settingsPage === 'cats') { renderCatManage(root); return; }
 
     root.innerHTML =
-      '<div class="card"><h3 class="section-title">记录搜索</h3>' +
+      '<button class="btn-primary settings-top-btn" id="openCatManage" type="button">分类管理</button>' +
+      '<div class="card">' +
       '<div class="search-row">' +
       '<input type="text" id="searchInput" class="modal-input" placeholder="输入关键字，如：跳绳 / 英语" style="margin:0">' +
       '<button class="btn-primary" id="genChartBtn" type="button" style="margin:0; width:auto; padding:12px 16px; white-space:nowrap">生成记录图</button>' +
       '</div>' +
       '<div id="searchResults" class="search-results"></div></div>' +
-      '<div class="card"><h3 class="section-title">分类管理</h3>' +
-      '<p class="tip" style="padding:2px 2px 12px">共 ' + state.categories.length + ' 个大类：' + catsPreview + '</p>' +
-      '<button class="btn-primary" id="openCatManage" type="button">进入分类管理</button></div>' +
       '<div class="card"><h3 class="section-title">数据</h3>' +
       '<button class="btn-ghost" id="exportBtn">导出数据 (JSON)</button>' +
       '<button class="btn-ghost" id="importBtn">导入数据 (JSON)</button>' +
