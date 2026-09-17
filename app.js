@@ -184,6 +184,36 @@
     }).join('');
   }
 
+  /* 首页看板：今日总时长 / 本周总时长 / 连续打卡天数 */
+  function computeStreak() {
+    var has = {};
+    state.records.forEach(function (r) { has[r.date] = true; });
+    var d = new Date();
+    var today = fmtDate(d);
+    var y = new Date(d); y.setDate(d.getDate() - 1); var yest = fmtDate(y);
+    var anchor;
+    if (has[today]) anchor = d;
+    else if (has[yest]) anchor = y; // 今天还没记但昨天记了，连续未断
+    else return 0;
+    var streak = 0, cur = new Date(anchor);
+    while (has[fmtDate(cur)]) { streak++; cur.setDate(cur.getDate() - 1); }
+    return streak;
+  }
+  function dashboardHTML() {
+    var today = fmtDate(new Date());
+    var week = weekDays(today);
+    var todayTotal = state.records.filter(function (r) { return r.date === today; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+    var weekTotal = state.records.filter(function (r) { return week.indexOf(r.date) >= 0; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+    var streak = computeStreak();
+    return '<div class="dash-card"><div class="dash-num">' + todayTotal + '</div><div class="dash-lbl">今日(分)</div></div>' +
+      '<div class="dash-card"><div class="dash-num">' + weekTotal + '</div><div class="dash-lbl">本周(分)</div></div>' +
+      '<div class="dash-card"><div class="dash-num">' + streak + '</div><div class="dash-lbl">连续(天)</div></div>';
+  }
+  function renderDashboard() {
+    var el = document.getElementById('dash');
+    if (el) el.innerHTML = dashboardHTML();
+  }
+
   function renderRecord() {
     var root = document.getElementById('view-record');
     var cats = state.categories;
@@ -194,6 +224,7 @@
     }).join('');
 
     root.innerHTML =
+      '<div class="dash" id="dash">' + dashboardHTML() + '</div>' +
       '<div class="card">' +
       '<label class="lbl">日期</label>' +
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
@@ -347,6 +378,7 @@
     if (list) list.innerHTML = buildRecordListHTML();
     if (title) title.textContent = ui.recDate + ' 的记录';
     bindListButtons();
+    renderDashboard();
   }
 
   function saveRecord() {
