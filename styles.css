@@ -266,3 +266,69 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 }
 .tabbar button span { font-size: 19px; }
 .tabbar button.active { color: #5b8def; font-weight: 700; }
+
+/* 横屏按钮图标 & 当日明细弹窗 */
+.rot-ico { vertical-align: middle; margin-right: 2px; }
+.bd-list { margin: 4px 0 10px; }
+.bd-item { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f3f8; font-size: 14px; color: #1f2733; }
+.bd-item:last-child { border-bottom: none; }
+.bd-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.bd-item b { margin-left: auto; color: #5b8def; font-weight: 800; }
+
+/* 深色模式（跟随系统，图表画布也会同步配色，黑色背景下数字清晰可见） */
+@media (prefers-color-scheme: dark) {
+  body { background: #0e1320; color: #e6ecf6; }
+  .app { background: linear-gradient(180deg, #14223c 0%, #0e1320 220px, #0e1320 100%); }
+  .app-header { box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+  .card { background: #182135; box-shadow: 0 3px 12px rgba(0,0,0,0.35); }
+  .section-title { color: #f2f6fd; }
+  .lbl { color: #9aa6bd; }
+  input[type=text], input[type=date], input[type=number] { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  input:focus { background: #223052; border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(122,162,255,0.25); }
+  .chip { background: #1e2840; border-color: #2a3650; color: #cdd8ec; }
+  .chip.active { background: color-mix(in srgb, #7aa2ff 18%, #182135); color: #fff; box-shadow: 0 0 0 2px rgba(122,162,255,0.4); }
+  .tip { color: #9aa6bd; }
+  .rec-title { color: #e6ecf6; }
+  .rec-meta { color: #9aa6bd; }
+  .rec-time { color: #8fb4ff; }
+  .rec-edit { background: #243355; color: #8fb4ff; }
+  .rec-del { background: #243355; color: #9aa6bd; }
+  .rec-nav-title { color: #f2f6fd; }
+  .rec-nav-btn { background: #1e2840; border-color: #2a3650; color: #cdd8ec; }
+  .modal-overlay { background: rgba(8,12,20,0.6); }
+  .modal-box { background: #182135; }
+  .modal-title { color: #f2f6fd; }
+  .modal-input { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  .mr-title { color: #e6ecf6; }
+  .mr-meta { color: #9aa6bd; }
+  .mr-min { color: #8fb4ff; }
+  .modal-empty { color: #9aa6bd; }
+  .sum-card { background: #182135; box-shadow: 0 3px 12px rgba(0,0,0,0.35); }
+  .sum-num { color: #8fb4ff; }
+  .sum-lbl { color: #9aa6bd; }
+  .range-tabs { background: #1e2840; }
+  .range-tabs button { color: #9aa6bd; }
+  .range-tabs button.active { background: #2a3650; color: #8fb4ff; }
+  .btn-ghost { background: #1e2840; border-color: #2a3650; color: #cdd8ec; }
+  .btn-danger { background: #2a1a24; border-color: #5a2a3a; color: #ff7a9c; }
+  .legend .lg { color: #c7d2e6; }
+  .legend .lg b { color: #f2f6fd; }
+  .cat-manage { border-color: #2a3650; }
+  .cm-name { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  .cm-del { background: #2a1a24; border-color: #5a2a3a; color: #ff7a9c; }
+  .tabbar { background: rgba(20,28,44,0.96); border-top-color: #2a3650; }
+  .tabbar button { color: #9aa6bd; }
+  .tabbar button.active { color: #8fb4ff; }
+  .pano-select { background: #1e2840; border-color: #2a3650; color: #cdd8ec; }
+  .pano-zoom { background: #243355; border-color: #2a3650; color: #8fb4ff; }
+  .pano-scroll { border-color: #2a3650; }
+  .wg-cell { background: #1e2840; color: #9aa6bd; }
+  .wg-cell.wg-h { background: #243355; color: #c7d2e6; }
+  .wg-cell.wg-day { background: #182135; color: #f2f6fd; }
+  .wg-cell.wg-day .wg-date { color: #9aa6bd; }
+  .wg-cell.wg-total { background: #243355; color: #cdd8ec; }
+  .wg-cell.wg-foot { background: #23314f; color: #8fb4ff; }
+  .wg-cell.wg-zero { color: #4a5670; }
+  .bd-item { color: #e6ecf6; border-color: #2a3650; }
+  .bd-item b { color: #8fb4ff; }
+}
