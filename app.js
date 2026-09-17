@@ -275,14 +275,7 @@
     })();
     root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
-    root.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (confirm('确定删除这条记录吗？删除后不可恢复。')) store.op('deleteRecord', { id: b.dataset.del });
-      });
-    });
-    root.querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
-    });
+    bindListButtons();
     var dp = root.querySelector('#dayPrev'); if (dp) dp.addEventListener('click', function () { navigateDay(-1); });
     var dn = root.querySelector('#dayNext'); if (dn) dn.addEventListener('click', function () { navigateDay(1); });
     renderRows();
@@ -322,11 +315,27 @@
     refreshRecordList();
   }
 
+  /* 绑定记录列表里的编辑/删除按钮。每次列表 innerHTML 被重建后都必须重新调用，
+     否则会出现「首次进入页面编辑按钮无反应」的问题（store.init 回调用 refreshRecordList 重建了列表）。 */
+  function bindListButtons() {
+    var root = document.getElementById('view-record');
+    if (!root) return;
+    root.querySelectorAll('[data-del]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (confirm('确定删除这条记录吗？删除后不可恢复。')) store.op('deleteRecord', { id: b.dataset.del });
+      });
+    });
+    root.querySelectorAll('[data-edit]').forEach(function (b) {
+      b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
+    });
+  }
+
   function refreshRecordList() {
     var list = document.getElementById('recList');
     var title = document.getElementById('recDateTitle');
     if (list) list.innerHTML = buildRecordListHTML();
     if (title) title.textContent = ui.recDate + ' 的记录';
+    bindListButtons();
   }
 
   function saveRecord() {
@@ -421,6 +430,15 @@
     });
     var byDayVals = dates.map(function (d) { return recs.filter(function (r) { return r.date === d; }).reduce(function (s, r) { return s + r.minutes; }, 0); });
 
+    /* 月视图横轴只标 1日/8日/15日/23日/最后1日，避免 30 天日期挤成一团乱码 */
+    var labelShow = null;
+    if (ui.statsRange === 'month') {
+      labelShow = dates.map(function (d, i) {
+        var dom = parseDate(d).getDate();
+        return dom === 1 || dom === 8 || dom === 15 || dom === 23 || i === dates.length - 1;
+      });
+    }
+
     var single = dates.length === 1;
     var barPalette = ['#5b8def', '#7c5cff', '#06d6a0', '#ffb703', '#ef476f', '#4ecdc4', '#f78c6b'];
     var barLabels, barVals, barColors, barDates, barCats;
@@ -467,9 +485,8 @@
       '</select>' +
       '<button class="pano-zoom" id="panoZoom" type="button" title="横屏查看表格"><svg class="rot-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 L19 5"/><polyline points="9 19 5 19 5 15"/><polyline points="15 5 19 5 19 9"/></svg> 横屏</button>' +
       '</div></div>' +
-      '<p class="tip" style="padding:2px 2px 8px">上下滑动看全部日期（含无记录日），左右可滑动看更多大类；点格子看当日具体事项 · 单位：分钟</p>' +
+      '<p class="tip" style="padding:2px 2px 8px">点格子看当日明细 · 单位：分钟</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
-      '<p class="tip" style="padding:8px 2px 0">空白表示该天该大类无记录。</p>' +
       '<div class="modal-overlay pano-modal" id="panoModal" hidden>' +
         '<div class="pano-modal-box">' +
           '<div class="pano-modal-head"><h3>全景图 · 横屏查看更清晰</h3>' +
@@ -480,8 +497,7 @@
             '<button class="pzc" id="panoZoomFit" type="button" title="适应屏幕">适应</button>' +
             '<button class="modal-close pano-modal-close" id="panoModalClose" type="button" title="关闭">✕</button>' +
           '</div></div>' +
-          '<p class="tip pano-modal-tip">左右滑动看全部大类 · 点格子看具体事项 · 单位：分钟</p>' +
-          '<p class="land-hint">📱 建议将手机横过来，看得更清楚</p>' +
+          '<p class="tip pano-modal-tip">点格子看明细 · 单位：分钟</p>' +
           '<div class="pano-modal-scroll"><div class="pano-grid pano-grid-lg" id="panoModalGrid"></div></div>' +
         '</div>' +
       '</div></div>';
@@ -492,8 +508,8 @@
 
     drawDoughnut(document.getElementById('chartCat'), byCat);
     drawLegend(document.getElementById('legendCat'), byCat);
-    drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors, barDates, barCats);
-    drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals, dates);
+    drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors, barDates, barCats, labelShow);
+    drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals, dates, labelShow);
     var canvasBar = document.getElementById('chartBar');
     if (canvasBar) canvasBar.addEventListener('click', function (e) {
       if (!barHitData.length) return;
@@ -570,11 +586,13 @@
     return datesBetween(start, end);
   }
 
-  function buildPano(el, large) {
+  function buildPano(el, large, opts) {
     if (!el) return;
     el.classList.toggle('pano-grid-lg', !!large);
     var cats = state.categories;
-    var dates = panoRangeDates().slice().reverse(); // 最新在上
+    var data = (opts && opts.records) ? opts.records : state.records;
+    var rawDates = (opts && opts.dates) ? opts.dates : panoRangeDates();
+    var dates = rawDates.slice().reverse(); // 最新在上
     if (!dates.length) { el.innerHTML = '<div class="pano-empty">该时间段还没有记录</div>'; el.style.gridTemplateColumns = ''; return; }
     var wdNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     var html = '';
@@ -584,11 +602,11 @@
     html += '<div class="wg-cell wg-h">合计</div>';
     // 每日一行（含无记录日）
     dates.forEach(function (d) {
-      var recs = state.records.filter(function (r) { return r.date === d; });
+      var dayRecs = data.filter(function (r) { return r.date === d; });
       var rowTotal = 0;
       html += '<div class="wg-cell wg-day wg-sticky-col" data-date="' + d + '" data-cat="">' + d.slice(5) + ' ' + wdNames[parseDate(d).getDay()] + '</div>';
       cats.forEach(function (c) {
-        var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+        var m = dayRecs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
         rowTotal += m;
         if (m > 0) html += '<div class="wg-cell has wg-click" data-date="' + d + '" data-cat="' + c.id + '" style="background:' + c.color + '22;color:' + c.color + '">' + m + '</div>';
         else html += '<div class="wg-cell wg-zero" data-date="' + d + '" data-cat="' + c.id + '">·</div>';
@@ -598,7 +616,7 @@
     // 合计行
     var catTotals = cats.map(function (c) {
       return dates.reduce(function (s, d) {
-        return s + state.records.filter(function (r) { return r.date === d && r.catId === c.id; }).reduce(function (a, r) { return a + r.minutes; }, 0);
+        return s + data.filter(function (r) { return r.date === d && r.catId === c.id; }).reduce(function (a, r) { return a + r.minutes; }, 0);
       }, 0);
     });
     var grand = catTotals.reduce(function (s, v) { return s + v; }, 0);
@@ -616,8 +634,8 @@
     }
   }
 
-  function showPanoDetail(date, catId) {
-    var recs = state.records.filter(function (r) { return r.date === date && (!catId || r.catId === catId); })
+  function showPanoDetail(date, catId, recsOverride) {
+    var recs = (recsOverride || state.records).filter(function (r) { return r.date === date && (!catId || r.catId === catId); })
       .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
     var c = catId ? findCat(catId) : null;
     var overlay = document.createElement('div');
@@ -645,6 +663,38 @@
     function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
     overlay.querySelector('#pdClose').addEventListener('click', close);
     overlay.querySelector('#pdOk').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  }
+
+  /* 关键字「记录图」：只展示匹配关键字的记录在各日期 / 各分类下的分布（类似全景图） */
+  function showKeywordChart(keyword) {
+    var kw = (keyword || '').trim().toLowerCase();
+    if (!kw) { alert('请先在上方输入关键字'); return; }
+    var matched = state.records.filter(function (r) {
+      var c = findCat(r.catId);
+      return (r.content || '').toLowerCase().indexOf(kw) >= 0 || (c && c.name.toLowerCase().indexOf(kw) >= 0);
+    });
+    if (!matched.length) { alert('未找到匹配「' + keyword + '」的记录'); return; }
+    var ds = matched.map(function (r) { return r.date; }).sort();
+    var dates = datesBetween(parseDate(ds[0]), parseDate(ds[ds.length - 1]));
+    var total = matched.reduce(function (s, r) { return s + r.minutes; }, 0);
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box kw-chart-box">' +
+      '<div class="modal-title-row"><h3 class="modal-title">「' + esc(keyword) + '」记录分布 · 共 ' + total + ' 分</h3>' +
+      '<button class="modal-close" id="kwClose" type="button" title="关闭">✕</button></div>' +
+      '<p class="tip" style="padding:0 2px 8px">点格子看该日匹配明细 · 单位：分钟</p>' +
+      '<div class="pano-scroll"><div class="pano-grid" id="kwGrid"></div></div></div>';
+    document.body.appendChild(overlay);
+    var grid = overlay.querySelector('#kwGrid');
+    buildPano(grid, false, { records: matched, dates: dates });
+    grid.onclick = function (e) {
+      var cell = e.target.closest('[data-date]');
+      if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || '', matched);
+    };
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelector('#kwClose').addEventListener('click', close);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   }
 
@@ -716,6 +766,12 @@
     }).join('');
 
     root.innerHTML =
+      '<div class="card"><h3 class="section-title">记录搜索</h3>' +
+      '<div class="search-row">' +
+      '<input type="text" id="searchInput" class="modal-input" placeholder="输入关键字，如：跳绳 / 英语" style="margin:0">' +
+      '<button class="btn-primary" id="genChartBtn" type="button" style="margin:0; width:auto; padding:12px 16px; white-space:nowrap">生成记录图</button>' +
+      '</div>' +
+      '<div id="searchResults" class="search-results"></div></div>' +
       '<div class="card"><h3 class="section-title">分类管理（大类）</h3>' + cats +
       '<button class="btn-ghost" id="addCat">＋ 新增大类</button></div>' +
       '<div class="card"><h3 class="section-title">数据</h3>' +
@@ -734,6 +790,33 @@
     root.querySelector('#resetBtn').addEventListener('click', function () {
       if (confirm('确定清空所有分类和记录？此操作不可恢复。')) store.op('resetSpace', {});
     });
+
+    /* 搜索：输入关键字列出所有相关记录，并可生成「记录图」分布表 */
+    var sInp = root.querySelector('#searchInput');
+    var sRes = root.querySelector('#searchResults');
+    function doSearch() {
+      var kw = (sInp.value || '').trim().toLowerCase();
+      if (!kw) { sRes.innerHTML = ''; return; }
+      var matched = state.records.filter(function (r) {
+        var c = findCat(r.catId);
+        return (r.content || '').toLowerCase().indexOf(kw) >= 0 || (c && c.name.toLowerCase().indexOf(kw) >= 0);
+      }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      if (!matched.length) { sRes.innerHTML = '<p class="modal-empty">未找到匹配「' + esc(sInp.value) + '」的记录</p>'; return; }
+      sRes.innerHTML = '<ul class="modal-rec-list">' + matched.map(function (r) {
+        var cc = findCat(r.catId);
+        return '<li class="mr-item" data-edit="' + r.id + '" style="cursor:pointer">' +
+          '<span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
+          '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
+          '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + ' · ' + r.date + '</div></div>' +
+          '<div class="mr-min">' + r.minutes + '分</div></li>';
+      }).join('') + '</ul>';
+      sRes.querySelectorAll('[data-edit]').forEach(function (b) {
+        b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
+      });
+    }
+    if (sInp) sInp.addEventListener('input', doSearch);
+    var genBtn = root.querySelector('#genChartBtn');
+    if (genBtn) genBtn.addEventListener('click', function () { showKeywordChart(sInp ? sInp.value : ''); });
   }
 
   function addCatHandler() {
@@ -811,7 +894,7 @@
       return '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + ' <b>' + d.value + '分</b></span>';
     }).join('');
   }
-  function drawBars(canvas, labels, values, color, datesArr, catsArr) {
+  function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow) {
     barHitData = [];
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
     var th = chartTheme();
@@ -835,8 +918,8 @@
       var bh = (values[i] / max) * ch; var y = padT + ch - bh;
       ctx.fillStyle = Array.isArray(color) ? color[i] : (color || th.line);
       if (bh > 0) { roundRect(ctx, x, y, bw, bh, 4); ctx.fill(); }
-      if (n <= 14 && values[i] > 0) { ctx.fillStyle = th.value; ctx.font = '10px sans-serif'; ctx.fillText(values[i], x + bw / 2, y - 12); ctx.font = '10px sans-serif'; }
-      if (i % step === 0 || i === n - 1) { ctx.fillStyle = th.label; ctx.fillText(lb, x + bw / 2, padT + ch + 6); }
+      if ((n <= 14 || (labelShow && labelShow[i])) && values[i] > 0) { ctx.fillStyle = th.value; ctx.font = '10px sans-serif'; ctx.fillText(values[i], x + bw / 2, y - 12); ctx.font = '10px sans-serif'; }
+      if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) { ctx.fillStyle = th.label; ctx.fillText(lb, x + bw / 2, padT + ch + 6); }
       barHitData.push({ x: x, w: bw, top: padT, bottom: padT + ch, date: datesArr ? datesArr[i] : null, cat: catsArr ? catsArr[i] : null });
     });
   }
@@ -846,7 +929,7 @@
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function drawLine(canvas, labels, values, datesArr) {
+  function drawLine(canvas, labels, values, datesArr, labelShow) {
     lineHitData = [];
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
     var th = chartTheme();
@@ -873,7 +956,7 @@
     pts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = th.line; ctx.fill(); });
     var step = n > 14 ? Math.ceil(n / 12) : 1;
     ctx.fillStyle = th.label; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    labels.forEach(function (lb, i) { if (i % step === 0 || i === n - 1) ctx.fillText(lb, n > 1 ? padL + stepX * i : cw / 2 + padL, padT + ch + 6); });
+    labels.forEach(function (lb, i) { if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) ctx.fillText(lb, n > 1 ? padL + stepX * i : cw / 2 + padL, padT + ch + 6); });
     pts.forEach(function (p, i) { lineHitData.push({ x: p.x, y: p.y, date: datesArr ? datesArr[i] : null }); });
   }
 
