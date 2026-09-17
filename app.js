@@ -21,6 +21,7 @@
     panoScale: 1
   };
   var currentView = 'record';
+  var settingsPage = 'main';
   var suppressClick = false;
   var store = createLocalStore();
   var state = store.getState(); // 与 store 内部 cache 同一引用，原地修改
@@ -53,6 +54,7 @@
   /* 图表命中检测（点击柱状/折线用） */
   var barHitData = [];
   var lineHitData = [];
+  var chartData = null;
 
   /* 主题：根据系统深色模式选择图表配色，并显式填充背景，保证夜间模式可读 */
   function isDark() { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
@@ -154,7 +156,7 @@
     for (var j = 0; j < tabs.length; j++) tabs[j].classList.toggle('active', tabs[j].dataset.view === v);
     if (v === 'record') renderRecord();
     else if (v === 'stats') renderStats();
-    else if (v === 'settings') renderSettings();
+    else if (v === 'settings') { settingsPage = 'main'; renderSettings(); }
   }
 
   /* ---------------- record view ---------------- */
@@ -471,6 +473,7 @@
       '<div class="card"><h3 class="section-title">' + (single ? '当日分类占比' : '分类占比') + '</h3>' +
       '<canvas id="chartCat" class="chart"></canvas><div id="legendCat" class="legend"></div></div>' +
       '<div class="card"><h3 class="section-title">' + (single ? '当日各分类时长' : '每日时长') + '</h3>' +
+      '<div class="zoom-bar" id="zoomBar" hidden><span>已放大 · 双指缩放 / 拖动</span><button type="button" class="zoom-reset" id="zoomReset">查看全部</button></div>' +
       '<canvas id="chartBar" class="chart"></canvas></div>' +
       '<div class="card"><h3 class="section-title">时长趋势</h3>' +
       '<canvas id="chartLine" class="chart"></canvas></div>' +
@@ -508,8 +511,11 @@
 
     drawDoughnut(document.getElementById('chartCat'), byCat);
     drawLegend(document.getElementById('legendCat'), byCat);
-    drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors, barDates, barCats, labelShow);
-    drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals, dates, labelShow);
+    ui.zoom = null;
+    chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
+    var vChart = sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow);
+    drawBars(document.getElementById('chartBar'), vChart.barLabels, vChart.barVals, vChart.barColors, vChart.barDates, vChart.barCats, vChart.labelShow);
+    drawLine(document.getElementById('chartLine'), vChart.byDayLabels, vChart.byDayVals, vChart.dates, vChart.labelShow);
     var canvasBar = document.getElementById('chartBar');
     if (canvasBar) canvasBar.addEventListener('click', function (e) {
       if (!barHitData.length) return;
@@ -526,6 +532,10 @@
       for (var i = 0; i < lineHitData.length; i++) { var d = Math.abs(lineHitData[i].x - px); if (d < best) { best = d; hit = lineHitData[i]; } }
       if (hit && hit.date && best < (r.width / lineHitData.length + 8)) showDayBreakdown(hit.date, null);
     });
+    attachChartZoom(canvasBar);
+    attachChartZoom(canvasLine);
+    var zr = root.querySelector('#zoomReset');
+    if (zr) zr.addEventListener('click', function () { ui.zoom = null; redrawStatsCharts(); });
     var pg = document.getElementById('panoGrid');
     buildPano(pg);
     if (pg) pg.addEventListener('click', function (e) {
@@ -589,7 +599,7 @@
   function buildPano(el, large, opts) {
     if (!el) return;
     el.classList.toggle('pano-grid-lg', !!large);
-    var cats = state.categories;
+    var cats = (opts && opts.categories) ? opts.categories : state.categories;
     var data = (opts && opts.records) ? opts.records : state.records;
     var rawDates = (opts && opts.dates) ? opts.dates : panoRangeDates();
     var dates = rawDates.slice().reverse(); // 最新在上
@@ -677,6 +687,9 @@
     if (!matched.length) { alert('未找到匹配「' + keyword + '」的记录'); return; }
     var ds = matched.map(function (r) { return r.date; }).sort();
     var dates = datesBetween(parseDate(ds[0]), parseDate(ds[ds.length - 1]));
+    var usedMap = {};
+    matched.forEach(function (r) { usedMap[r.catId] = true; });
+    var usedCats = state.categories.filter(function (c) { return usedMap[c.id]; });
     var total = matched.reduce(function (s, r) { return s + r.minutes; }, 0);
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -688,7 +701,7 @@
       '<div class="pano-scroll"><div class="pano-grid" id="kwGrid"></div></div></div>';
     document.body.appendChild(overlay);
     var grid = overlay.querySelector('#kwGrid');
-    buildPano(grid, false, { records: matched, dates: dates });
+    buildPano(grid, false, { records: matched, dates: dates, categories: usedCats });
     grid.onclick = function (e) {
       var cell = e.target.closest('[data-date]');
       if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || '', matched);
@@ -758,11 +771,10 @@
   /* ---------------- settings view ---------------- */
   function renderSettings() {
     var root = document.getElementById('view-settings');
-    var cats = state.categories.map(function (c) {
-      return '<div class="cat-manage">' +
-        '<div class="cm-head"><span class="cm-icon" style="background:' + c.color + '">' + c.icon + '</span>' +
-        '<input class="cm-name" value="' + esc(c.name) + '" data-rename="' + c.id + '">' +
-        '<button class="cm-del" data-delcat="' + c.id + '">删除</button></div></div>';
+    if (settingsPage === 'cats') { renderCatManage(root); return; }
+
+    var catsPreview = state.categories.map(function (c) {
+      return '<span class="cm-pill" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</span>';
     }).join('');
 
     root.innerHTML =
@@ -772,19 +784,16 @@
       '<button class="btn-primary" id="genChartBtn" type="button" style="margin:0; width:auto; padding:12px 16px; white-space:nowrap">生成记录图</button>' +
       '</div>' +
       '<div id="searchResults" class="search-results"></div></div>' +
-      '<div class="card"><h3 class="section-title">分类管理（大类）</h3>' + cats +
-      '<button class="btn-ghost" id="addCat">＋ 新增大类</button></div>' +
+      '<div class="card"><h3 class="section-title">分类管理</h3>' +
+      '<p class="tip" style="padding:2px 2px 12px">共 ' + state.categories.length + ' 个大类：' + catsPreview + '</p>' +
+      '<button class="btn-primary" id="openCatManage" type="button">进入分类管理</button></div>' +
       '<div class="card"><h3 class="section-title">数据</h3>' +
       '<button class="btn-ghost" id="exportBtn">导出数据 (JSON)</button>' +
       '<button class="btn-ghost" id="importBtn">导入数据 (JSON)</button>' +
       '<button class="btn-danger" id="resetBtn">清空全部数据</button></div>' +
       '<p class="tip">数据保存在本机浏览器（localStorage）。换设备、清缓存或换浏览器前，请先「导出数据」备份；导入会覆盖当前数据。</p>';
 
-    var renames = root.querySelectorAll('[data-rename]');
-    renames.forEach(function (inp) { inp.addEventListener('change', function () { store.op('updateCat', { id: inp.dataset.rename, fields: { name: inp.value.trim() || findCat(inp.dataset.rename).name } }); }); });
-    var delcat = root.querySelectorAll('[data-delcat]');
-    delcat.forEach(function (b) { b.addEventListener('click', function () { if (confirm('删除该大类及其下所有记录？')) store.op('deleteCat', { id: b.dataset.delcat }); }); });
-    root.querySelector('#addCat').addEventListener('click', addCatHandler);
+    root.querySelector('#openCatManage').addEventListener('click', function () { settingsPage = 'cats'; renderSettings(); });
     root.querySelector('#exportBtn').addEventListener('click', exportData);
     root.querySelector('#importBtn').addEventListener('click', importData);
     root.querySelector('#resetBtn').addEventListener('click', function () {
@@ -817,6 +826,71 @@
     if (sInp) sInp.addEventListener('input', doSearch);
     var genBtn = root.querySelector('#genChartBtn');
     if (genBtn) genBtn.addEventListener('click', function () { showKeywordChart(sInp ? sInp.value : ''); });
+  }
+
+  /* 分类管理子页：编辑 / 删除 / 新增，支持返回 */
+  function renderCatManage(root) {
+    var cats = state.categories.map(function (c) {
+      return '<div class="cat-manage">' +
+        '<div class="cm-head"><span class="cm-icon" style="background:' + c.color + '">' + c.icon + '</span>' +
+        '<span class="cm-name">' + esc(c.name) + '</span></div>' +
+        '<div class="cm-actions">' +
+        '<button class="cm-edit" data-editcat="' + c.id + '" type="button">编辑</button>' +
+        '<button class="cm-del" data-delcat="' + c.id + '" type="button">删除</button></div></div>';
+    }).join('');
+    root.innerHTML =
+      '<div class="cat-manage-head">' +
+      '<button class="btn-ghost cat-back" id="catBack" type="button">‹ 返回</button>' +
+      '<h3 class="section-title" style="margin:0; text-align:center; flex:1 1 auto">分类管理</h3>' +
+      '<button class="btn-primary cat-add" id="addCat" type="button" style="margin:0; width:auto; padding:8px 14px; white-space:nowrap">＋ 新增</button></div>' +
+      '<div class="card cat-list">' + (cats || '<p class="modal-empty">还没有大类</p>') + '</div>';
+    root.querySelector('#catBack').addEventListener('click', function () { settingsPage = 'main'; renderSettings(); });
+    root.querySelector('#addCat').addEventListener('click', addCatHandler);
+    root.querySelectorAll('[data-delcat]').forEach(function (b) {
+      b.addEventListener('click', function () { if (confirm('删除该大类及其下所有记录？')) store.op('deleteCat', { id: b.dataset.delcat }); });
+    });
+    root.querySelectorAll('[data-editcat]').forEach(function (b) {
+      b.addEventListener('click', function () { openCatEditModal(b.dataset.editcat); });
+    });
+  }
+
+  function openCatEditModal(id) {
+    var c = findCat(id); if (!c) return;
+    var iconOpts = ['🏀', '🔤', '📜', '🔡', '📚', '🎵', '🎤', '⭐', '🌟', '🎯', '🚀', '🌈', '💡', '🔥', '🍀', '🧩', '🎨', '🏆'];
+    var colorOpts = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B', '#9B5DE5', '#00BBF9', '#F15BB5', '#FEE440'];
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box cat-edit-box">' +
+      '<h3 class="modal-title">编辑大类</h3>' +
+      '<label class="lbl">名称</label>' +
+      '<input type="text" id="catName" class="modal-input" value="' + esc(c.name) + '" placeholder="如：运动">' +
+      '<label class="lbl">图标</label><div class="icon-pick" id="catIcons">' +
+      iconOpts.map(function (ic) { return '<button type="button" class="ip' + (ic === c.icon ? ' active' : '') + '" data-ic="' + ic + '">' + ic + '</button>'; }).join('') +
+      '</div>' +
+      '<label class="lbl">颜色</label><div class="color-pick" id="catColors">' +
+      colorOpts.map(function (col) { return '<button type="button" class="cp' + (col === c.color ? ' active' : '') + '" data-col="' + col + '" style="background:' + col + '"></button>'; }).join('') +
+      '</div>' +
+      '<div class="modal-actions">' +
+      '<button type="button" class="btn-ghost" id="catCancel">取消</button>' +
+      '<button type="button" class="btn-primary" id="catSave">保存</button></div></div>';
+    document.body.appendChild(overlay);
+    var selIcon = c.icon, selColor = c.color;
+    overlay.querySelectorAll('#catIcons .ip').forEach(function (b) {
+      b.addEventListener('click', function () { selIcon = b.dataset.ic; overlay.querySelectorAll('#catIcons .ip').forEach(function (x) { x.classList.toggle('active', x === b); }); });
+    });
+    overlay.querySelectorAll('#catColors .cp').forEach(function (b) {
+      b.addEventListener('click', function () { selColor = b.dataset.col; overlay.querySelectorAll('#catColors .cp').forEach(function (x) { x.classList.toggle('active', x === b); }); });
+    });
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelector('#catCancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    overlay.querySelector('#catSave').addEventListener('click', function () {
+      var nm = (overlay.querySelector('#catName').value || '').trim();
+      if (!nm) { alert('名称必填'); return; }
+      store.op('updateCat', { id: id, fields: { name: nm, icon: selIcon, color: selColor } });
+      close();
+    });
   }
 
   function addCatHandler() {
@@ -971,6 +1045,122 @@
       }
     });
     pts.forEach(function (p, i) { lineHitData.push({ x: p.x, y: p.y, date: datesArr ? datesArr[i] : null }); });
+  }
+
+  /* 统计图表缩放（双指捏合 / 鼠标滚轮 / 拖动平移），仅改变可见日期窗口，不改变汇总 */
+  function sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow) {
+    var n = dates.length;
+    var z = ui.zoom;
+    if (!z || n <= 2) return { dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
+    var ia = Math.max(0, Math.floor(z.a));
+    var ib = Math.min(n, Math.ceil(z.b));
+    if (ib - ia < 2) ib = Math.min(n, ia + 2);
+    return {
+      dates: dates.slice(ia, ib),
+      byDayLabels: byDayLabels.slice(ia, ib),
+      byDayVals: byDayVals.slice(ia, ib),
+      barLabels: barLabels.slice(ia, ib),
+      barVals: barVals.slice(ia, ib),
+      barColors: barColors.slice(ia, ib),
+      barDates: barDates.slice(ia, ib),
+      barCats: barCats.slice(ia, ib),
+      labelShow: labelShow ? labelShow.slice(ia, ib) : null
+    };
+  }
+  function statsZoomApply() {
+    var n = chartData ? chartData.fullLen : 0;
+    if (!ui.zoom || n <= 2) { ui.zoom = { a: 0, b: n }; return; }
+    var z = ui.zoom;
+    if (z.b - z.a < 2) z.b = z.a + 2;
+    if (z.a < 0) z.a = 0;
+    if (z.b > n) z.b = n;
+    if (z.b - z.a > n) { z.a = 0; z.b = n; }
+  }
+  function zoomAt(centerFrac, factor) {
+    if (!chartData) return;
+    var n = chartData.fullLen;
+    if (!ui.zoom || n <= 2) ui.zoom = { a: 0, b: n };
+    var z = ui.zoom;
+    var len = z.b - z.a;
+    var center = z.a + centerFrac * len;
+    var newLen = Math.max(2, Math.min(n, len / factor));
+    var newA = center - centerFrac * newLen;
+    var newB = newA + newLen;
+    if (newA < 0) { newB -= newA; newA = 0; }
+    if (newB > n) { newA -= (newB - n); newB = n; }
+    ui.zoom = { a: newA, b: newB };
+    statsZoomApply();
+    redrawStatsCharts();
+  }
+  function panByFrac(df) {
+    if (!chartData) return;
+    var n = chartData.fullLen;
+    if (!ui.zoom || n <= 2) ui.zoom = { a: 0, b: n };
+    var z = ui.zoom;
+    var len = z.b - z.a;
+    var na = z.a + df * len;
+    na = Math.max(0, Math.min(n - len, na));
+    ui.zoom = { a: na, b: na + len };
+    statsZoomApply();
+    redrawStatsCharts();
+  }
+  function redrawStatsCharts() {
+    if (!chartData) return;
+    var c = chartData;
+    var v = sliceView(c.dates, c.byDayLabels, c.byDayVals, c.barLabels, c.barVals, c.barColors, c.barDates, c.barCats, c.labelShow);
+    drawBars(document.getElementById('chartBar'), v.barLabels, v.barVals, v.barColors, v.barDates, v.barCats, v.labelShow);
+    drawLine(document.getElementById('chartLine'), v.byDayLabels, v.byDayVals, v.dates, v.labelShow);
+    updateZoomUI();
+  }
+  function updateZoomUI() {
+    var bar = document.getElementById('zoomBar');
+    if (!bar) return;
+    var zoomed = ui.zoom && chartData && (ui.zoom.a > 0.05 || ui.zoom.b < chartData.fullLen - 0.05);
+    bar.hidden = !zoomed;
+  }
+  function attachChartZoom(canvas) {
+    if (!canvas) return;
+    canvas.style.touchAction = 'none';
+    var pts = new Map();
+    var pinchDist = 0;
+    function curDist() { var a = Array.from(pts.values()); if (a.length < 2) return 0; return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); }
+    function midFrac() {
+      var a = Array.from(pts.values());
+      if (a.length < 2) return 0.5;
+      var rect = canvas.getBoundingClientRect();
+      var cx = (a[0].x + a[1].x) / 2 - rect.left;
+      return Math.max(0, Math.min(1, cx / rect.width));
+    }
+    canvas.addEventListener('pointerdown', function (e) {
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) pinchDist = curDist();
+      if (canvas.setPointerCapture) { try { canvas.setPointerCapture(e.pointerId); } catch (_) {} }
+    });
+    canvas.addEventListener('pointermove', function (e) {
+      if (!pts.has(e.pointerId)) return;
+      var prev = pts.get(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        e.preventDefault();
+        var d = curDist();
+        if (pinchDist > 0) { var factor = d / pinchDist; if (factor > 0 && isFinite(factor)) zoomAt(midFrac(), factor); }
+        pinchDist = d;
+      } else if (pts.size === 1) {
+        e.preventDefault();
+        var rect = canvas.getBoundingClientRect();
+        var dx = e.clientX - prev.x;
+        panByFrac(-dx / rect.width);
+      }
+    });
+    function up(e) { pts.delete(e.pointerId); if (pts.size < 2) pinchDist = 0; }
+    canvas.addEventListener('pointerup', up);
+    canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var rect = canvas.getBoundingClientRect();
+      var frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      zoomAt(frac, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
   }
 
   /* ---------------- init ---------------- */
