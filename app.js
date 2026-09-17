@@ -232,6 +232,7 @@
       '<div class="chips">' + chips + '</div>' +
       '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序</p>' +
       '<div id="recRows" class="rec-rows"></div>' +
+      '<button type="button" class="btn-add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
       '</div>' +
       '<div class="rec-nav">' +
@@ -306,6 +307,8 @@
       });
     })();
     root.querySelector('#recSave').addEventListener('click', saveRecord);
+    var addBtn = root.querySelector('#addRow');
+    if (addBtn) addBtn.addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(ui.rows.length - 1); });
     bindListButtons();
     var dp = root.querySelector('#dayPrev'); if (dp) dp.addEventListener('click', function () { navigateDay(-1); });
     var dn = root.querySelector('#dayNext'); if (dn) dn.addEventListener('click', function () { navigateDay(1); });
@@ -320,32 +323,33 @@
       var showDel = ui.rows.length > 1;
       return '<div class="rec-row">' +
         '<div class="ri-field"><label class="ri-lbl">事项（可换行）</label>' +
-        '<textarea class="ri-content" data-row="' + i + '" rows="2" placeholder="如：跳绳100个（可换行）">' + esc(row.content) + '</textarea></div>' +
+        '<textarea class="ri-content" data-row="' + i + '" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(row.content) + '</textarea></div>' +
         '<div class="ri-field ri-min"><label class="ri-lbl">分钟</label>' +
         '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
         '</div>';
     }).join('');
     box.querySelectorAll('.ri-content').forEach(function (inp) {
-      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].content = inp.value; maybeAutoAdd(+inp.dataset.row); });
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].content = inp.value; autoGrow(inp); });
     });
     box.querySelectorAll('.ri-minutes').forEach(function (inp) {
-      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].minutes = inp.value; maybeAutoAdd(+inp.dataset.row); });
+      inp.addEventListener('input', function () { ui.rows[+inp.dataset.row].minutes = inp.value; });
     });
     box.querySelectorAll('.ri-del').forEach(function (b) {
       b.addEventListener('click', function () { ui.rows.splice(+b.dataset.delrow, 1); renderRows(); });
     });
+    /* 渲染后按内容自适应高度（默认单行，输入换行/超出时再撑高） */
+    box.querySelectorAll('.ri-content').forEach(function (inp) { autoGrow(inp); });
     if (focusIdx != null && focusIdx >= 0) {
       var fEl = box.querySelector('.ri-content[data-row="' + focusIdx + '"]');
       if (fEl) { fEl.focus(); var len = fEl.value.length; try { fEl.setSelectionRange(len, len); } catch (e) {} }
     }
   }
-  /* 在最后一行输入内容时自动追加一行空行，免去「新增事项」按钮 */
-  function maybeAutoAdd(idx) {
-    if (idx !== ui.rows.length - 1) return;
-    var last = ui.rows[idx];
-    var has = (last.content && last.content.trim()) || (last.minutes != null && String(last.minutes).trim());
-    if (has) { ui.rows.push({ content: '', minutes: '' }); renderRows(idx); }
+  /* 文本框随内容增长高度：默认只有一行，输入换行/文字变长才变高（不再自动冒出空行） */
+  function autoGrow(el) {
+    el.style.height = 'auto';
+    var max = 132;
+    el.style.height = Math.min(el.scrollHeight, max) + 'px';
   }
 
   function navigateDay(delta) {
