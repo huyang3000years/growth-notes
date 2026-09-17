@@ -274,7 +274,6 @@
         });
       });
     })();
-    root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
     bindListButtons();
     var dp = root.querySelector('#dayPrev'); if (dp) dp.addEventListener('click', function () { navigateDay(-1); });
@@ -779,9 +778,6 @@
 
   /* ---------------- settings view ---------------- */
   function renderSettings() {
-    var root = document.getElementById('view-settings');
-    if (settingsPage === 'cats') { renderCatManage(root); return; }
-
     var root = document.getElementById('view-settings');
     if (settingsPage === 'cats') { renderCatManage(root); return; }
 
