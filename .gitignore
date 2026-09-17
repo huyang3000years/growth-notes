@@ -1,0 +1,14 @@
+# 依赖 / 运行时
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 本地数据（云端后端使用，静态版不涉及）
+data/
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.swp
+.workbuddy/
