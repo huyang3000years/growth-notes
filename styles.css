@@ -67,17 +67,13 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 }
 .chip.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, #fff); color: #1f2733; font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent); }
 
-.subchips { display: flex; flex-wrap: wrap; gap: 8px; }
-.subchip {
-  border: 1px solid #e2e8f2;
-  background: #f3f6fc;
-  border-radius: 999px;
-  padding: 8px 13px;
-  font-size: 13px;
-  color: #3a4452;
-}
-.subchip.active { background: #5b8def; color: #fff; border-color: #5b8def; font-weight: 700; }
-.subchip.add { border-style: dashed; color: #5b8def; }
+.rec-rows { margin-top: 2px; }
+.rec-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.rec-row .ri-content { flex: 1 1 auto; min-width: 0; }
+.rec-row .ri-minutes { flex: 0 0 84px; width: 84px; }
+.ri-del { flex: 0 0 auto; border: none; background: #f3f6fc; color: #aab2c0; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; }
+.ri-del:active { background: #ffe3ea; color: #ef476f; }
+.add-row { margin-top: 6px; }
 
 .btn-primary {
   width: 100%;
@@ -148,6 +144,16 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .legend .lg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4a5464; }
 .legend .lg i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 .legend .lg b { color: #1f2733; }
+
+.week-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.week-grid { display: grid; gap: 4px; min-width: 540px; font-size: 12px; }
+.wg-cell { background: #f6f8fc; border-radius: 8px; padding: 9px 4px; text-align: center; line-height: 1.3; min-width: 0; color: #6b7585; }
+.wg-cell.wg-h { background: #eef2f8; font-weight: 700; color: #4a5464; }
+.wg-cell.wg-day { background: #fff; font-weight: 700; color: #2b3442; }
+.wg-cell.wg-day .wg-date { font-size: 10px; color: #9aa4b4; font-weight: 500; }
+.wg-cell.wg-total { background: #f0f3f8; font-weight: 700; color: #344056; }
+.wg-cell.wg-foot { background: #eaf1ff; font-weight: 800; color: #5b8def; }
+.wg-cell.has { font-weight: 800; }
 
 .cat-manage { border: 1px solid #eef2f8; border-radius: 14px; padding: 12px; margin-bottom: 10px; }
 .cm-head { display: flex; align-items: center; gap: 10px; }
