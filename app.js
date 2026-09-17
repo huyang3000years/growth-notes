@@ -50,6 +50,25 @@
   }
   function findCat(id) { for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i]; return null; }
 
+  /* 图表命中检测（点击柱状/折线用） */
+  var barHitData = [];
+  var lineHitData = [];
+
+  /* 主题：根据系统深色模式选择图表配色，并显式填充背景，保证夜间模式可读 */
+  function isDark() { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); }
+  function chartTheme() {
+    if (isDark()) return {
+      bg: '#182135', text: '#eaf0fb', muted: '#9aa6bd', grid: 'rgba(255,255,255,0.10)',
+      label: '#c7d2e6', value: '#f2f6fd', line: '#7aa2ff',
+      lfTop: 'rgba(122,162,255,0.30)', lfBot: 'rgba(122,162,255,0.02)'
+    };
+    return {
+      bg: '#ffffff', text: '#2b3442', muted: '#9aa4b4', grid: '#eef2f8',
+      label: '#6b7585', value: '#2b3442', line: '#5b8def',
+      lfTop: 'rgba(91,141,239,0.28)', lfBot: 'rgba(91,141,239,0.02)'
+    };
+  }
+
   /* 长按拖动排序辅助 */
   function chipUnderPoint(container, x, y, self) {
     var best = null;
@@ -257,7 +276,9 @@
     root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
     root.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () { store.op('deleteRecord', { id: b.dataset.del }); });
+      b.addEventListener('click', function () {
+        if (confirm('确定删除这条记录吗？删除后不可恢复。')) store.op('deleteRecord', { id: b.dataset.del });
+      });
     });
     root.querySelectorAll('[data-edit]').forEach(function (b) {
       b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
@@ -391,19 +412,31 @@
 
     var byCat = state.categories.map(function (c) {
       var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
-      return { name: c.name, value: m, color: c.color };
+      return { id: c.id, name: c.name, value: m, color: c.color };
     }).filter(function (x) { return x.value > 0; });
 
     var byDayLabels = dates.map(function (d) {
       if (ui.statsRange === 'week') { var wd = ['一', '二', '三', '四', '五', '六', '日']; return '周' + wd[(parseDate(d).getDay() + 6) % 7]; }
-      return d.slice(5);
+      var p = parseDate(d); return (p.getMonth() + 1) + '/' + p.getDate();
     });
     var byDayVals = dates.map(function (d) { return recs.filter(function (r) { return r.date === d; }).reduce(function (s, r) { return s + r.minutes; }, 0); });
 
     var single = dates.length === 1;
-    var barLabels, barVals, barColors;
-    if (single) { barLabels = byCat.map(function (x) { return x.name; }); barVals = byCat.map(function (x) { return x.value; }); barColors = byCat.map(function (x) { return x.color; }); }
-    else { barLabels = byDayLabels; barVals = byDayVals; barColors = null; }
+    var barPalette = ['#5b8def', '#7c5cff', '#06d6a0', '#ffb703', '#ef476f', '#4ecdc4', '#f78c6b'];
+    var barLabels, barVals, barColors, barDates, barCats;
+    if (single) {
+      barLabels = byCat.map(function (x) { return x.name; });
+      barVals = byCat.map(function (x) { return x.value; });
+      barColors = byCat.map(function (x) { return x.color; });
+      barDates = byCat.map(function () { return ui.statsDate; });
+      barCats = byCat.map(function (x) { return x.id; });
+    } else {
+      barLabels = byDayLabels;
+      barVals = byDayVals;
+      barColors = dates.map(function (d, i) { return barPalette[i % barPalette.length]; });
+      barDates = dates.slice();
+      barCats = dates.map(function () { return null; });
+    }
 
     root.innerHTML =
       '<div class="card stats-head">' +
@@ -432,7 +465,7 @@
       '<option value="month">本月</option>' +
       '<option value="year">今年</option>' +
       '</select>' +
-      '<button class="pano-zoom" id="panoZoom" type="button" title="放大横屏查看">⛶ 放大</button>' +
+      '<button class="pano-zoom" id="panoZoom" type="button" title="横屏查看表格"><svg class="rot-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 L19 5"/><polyline points="9 19 5 19 5 15"/><polyline points="15 5 19 5 19 9"/></svg> 横屏</button>' +
       '</div></div>' +
       '<p class="tip" style="padding:2px 2px 8px">上下滑动看全部日期（含无记录日），左右可滑动看更多大类；点格子看当日具体事项 · 单位：分钟</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
@@ -459,8 +492,24 @@
 
     drawDoughnut(document.getElementById('chartCat'), byCat);
     drawLegend(document.getElementById('legendCat'), byCat);
-    drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors);
-    drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals);
+    drawBars(document.getElementById('chartBar'), barLabels, barVals, barColors, barDates, barCats);
+    drawLine(document.getElementById('chartLine'), byDayLabels, byDayVals, dates);
+    var canvasBar = document.getElementById('chartBar');
+    if (canvasBar) canvasBar.addEventListener('click', function (e) {
+      if (!barHitData.length) return;
+      var r = canvasBar.getBoundingClientRect(); var px = e.clientX - r.left;
+      var hit = null;
+      for (var i = 0; i < barHitData.length; i++) { var b = barHitData[i]; if (px >= b.x - 4 && px <= b.x + b.w + 4) { hit = b; break; } }
+      if (hit && hit.date) showDayBreakdown(hit.date, hit.cat);
+    });
+    var canvasLine = document.getElementById('chartLine');
+    if (canvasLine) canvasLine.addEventListener('click', function (e) {
+      if (!lineHitData.length) return;
+      var r = canvasLine.getBoundingClientRect(); var px = e.clientX - r.left;
+      var hit = null, best = 1e9;
+      for (var i = 0; i < lineHitData.length; i++) { var d = Math.abs(lineHitData[i].x - px); if (d < best) { best = d; hit = lineHitData[i]; } }
+      if (hit && hit.date && best < (r.width / lineHitData.length + 8)) showDayBreakdown(hit.date, null);
+    });
     var pg = document.getElementById('panoGrid');
     buildPano(pg);
     if (pg) pg.addEventListener('click', function (e) {
@@ -478,9 +527,10 @@
         buildPano(mg, true);
         mg.onclick = function (e) { var cell = e.target.closest('[data-date]'); if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || ''); };
         pmo.hidden = false;
+        tryLandscape(pmo);
         var pmc = document.getElementById('panoModalClose');
-        if (pmc) pmc.onclick = function () { pmo.hidden = true; };
-        pmo.onclick = function (e) { if (e.target === pmo) pmo.hidden = true; };
+        if (pmc) pmc.onclick = function () { exitLandscape(); pmo.hidden = true; };
+        pmo.onclick = function (e) { if (e.target === pmo) { exitLandscape(); pmo.hidden = true; } };
       });
     }
     function applyPanoScale() {
@@ -536,7 +586,7 @@
     dates.forEach(function (d) {
       var recs = state.records.filter(function (r) { return r.date === d; });
       var rowTotal = 0;
-      html += '<div class="wg-cell wg-day wg-sticky-col" data-date="' + d + '" data-cat="">' + d.slice(5) + '<br><span class="wg-date">' + wdNames[parseDate(d).getDay()] + '</span></div>';
+      html += '<div class="wg-cell wg-day wg-sticky-col" data-date="' + d + '" data-cat="">' + d.slice(5) + ' ' + wdNames[parseDate(d).getDay()] + '</div>';
       cats.forEach(function (c) {
         var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
         rowTotal += m;
@@ -558,8 +608,8 @@
     el.innerHTML = html;
     if (large) {
       var scale = ui.panoScale || 1;
-      // 弹性列：所有大类均分剩余宽度，保证在横屏下覆盖全部列、无需横滑
-      el.style.gridTemplateColumns = '100px repeat(' + cats.length + ', minmax(40px, 1fr)) 64px';
+      // 弹性列：所有大类均分剩余宽度；缩放时列宽与字号同步变化
+      el.style.gridTemplateColumns = (100 * scale) + 'px repeat(' + cats.length + ', minmax(' + Math.round(54 * scale) + 'px, 1fr)) ' + Math.round(64 * scale) + 'px';
       el.style.fontSize = (15 * scale) + 'px';
     } else {
       el.style.gridTemplateColumns = '92px repeat(' + cats.length + ', minmax(72px, 1fr)) 56px';
@@ -595,6 +645,61 @@
     function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
     overlay.querySelector('#pdClose').addEventListener('click', close);
     overlay.querySelector('#pdOk').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  }
+
+  /* 横屏显示：尽量全屏 + 方向锁定（不支持时退化为自适应宽表格） */
+  function tryLandscape(modalEl) {
+    try {
+      var el = modalEl || document.getElementById('panoModal');
+      if (el && el.requestFullscreen) el.requestFullscreen().catch(function () {});
+      if (window.screen && screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(function () {});
+      }
+    } catch (e) {}
+  }
+  function exitLandscape() {
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {}); } catch (e) {}
+    try { if (window.screen && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+  }
+
+  /* 点击柱状/折线：显示某日各分类学习时长明细 */
+  function showDayBreakdown(date, catId) {
+    var recs = state.records.filter(function (r) { return r.date === date && (!catId || r.catId === catId); })
+      .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+    var c = catId ? findCat(catId) : null;
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    var breakdown = '';
+    if (!catId) {
+      var perCat = state.categories.map(function (cat) {
+        return { name: cat.name, color: cat.color, m: recs.filter(function (r) { return r.catId === cat.id; }).reduce(function (s, r) { return s + r.minutes; }, 0) };
+      }).filter(function (x) { return x.m > 0; });
+      if (perCat.length) {
+        breakdown = '<div class="bd-list">' + perCat.map(function (x) {
+          return '<div class="bd-item"><span class="bd-dot" style="background:' + x.color + '"></span>' + esc(x.name) + '<b>' + x.m + '分</b></div>';
+        }).join('') + '</div>';
+      }
+    }
+    var list = recs.length
+      ? '<ul class="modal-rec-list">' + recs.map(function (r) {
+          var cc = findCat(r.catId);
+          return '<li class="mr-item"><span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
+            '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
+            '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + '</div></div>' +
+            '<div class="mr-min">' + r.minutes + '分</div></li>';
+        }).join('') + '</ul>'
+      : '<p class="modal-empty">' + date + ' 暂无记录</p>';
+    overlay.innerHTML =
+      '<div class="modal-box">' +
+      '<div class="modal-title-row"><h3 class="modal-title">' + date + (c ? ' · ' + esc(c.name) : ' · 当日明细') + '</h3>' +
+      '<button class="modal-close" id="bdClose" type="button">✕</button></div>' +
+      breakdown + list +
+      '<div class="modal-actions"><button type="button" class="btn-primary" id="bdOk">知道了</button></div></div>';
+    document.body.appendChild(overlay);
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelector('#bdClose').addEventListener('click', close);
+    overlay.querySelector('#bdOk').addEventListener('click', close);
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   }
 
@@ -684,8 +789,10 @@
   }
   function drawDoughnut(canvas, data) {
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
+    var th = chartTheme();
+    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
     var total = data.reduce(function (s, d) { return s + d.value; }, 0);
-    if (total <= 0) { ctx.fillStyle = '#b7c0cf'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
+    if (total <= 0) { ctx.fillStyle = th.muted; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
     var cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 8, ir = r * 0.58;
     var start = -Math.PI / 2;
     data.forEach(function (d) {
@@ -693,10 +800,10 @@
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, start + ang); ctx.closePath();
       ctx.fillStyle = d.color; ctx.fill(); start += ang;
     });
-    ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
-    ctx.fillStyle = '#2b3442'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2); ctx.fillStyle = th.bg; ctx.fill();
+    ctx.fillStyle = th.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 20px sans-serif'; ctx.fillText(total + '分', cx, cy - 6);
-    ctx.fillStyle = '#8a94a6'; ctx.font = '11px sans-serif'; ctx.fillText('总时长', cx, cy + 14);
+    ctx.fillStyle = th.muted; ctx.font = '11px sans-serif'; ctx.fillText('总时长', cx, cy + 14);
   }
   function drawLegend(el, data) {
     if (!data.length) { el.innerHTML = ''; return; }
@@ -704,28 +811,33 @@
       return '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + ' <b>' + d.value + '分</b></span>';
     }).join('');
   }
-  function drawBars(canvas, labels, values, color) {
+  function drawBars(canvas, labels, values, color, datesArr, catsArr) {
+    barHitData = [];
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
+    var th = chartTheme();
+    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
     var max = Math.max.apply(null, values.concat([1]));
-    var padL = 32, padR = 10, padT = 12, padB = 24, cw = w - padL - padR, ch = h - padT - padB;
-    ctx.strokeStyle = '#eef2f8'; ctx.fillStyle = '#9aa4b4'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    var padL = 32, padR = 10, padT = 14, padB = 26, cw = w - padL - padR, ch = h - padT - padB;
+    ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (var i = 0; i <= 4; i++) {
       var y = padT + ch - (i / 4) * ch;
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
       ctx.fillText(Math.round((i / 4) * max), padL - 5, y);
     }
-    if (values.every(function (v) { return v === 0; })) { ctx.fillStyle = '#b7c0cf'; ctx.textAlign = 'center'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
+    if (values.every(function (v) { return v === 0; })) { ctx.fillStyle = th.muted; ctx.textAlign = 'center'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
     var n = labels.length;
-    var bw = Math.min(38, cw / n * 0.62);
+    var bw = Math.min(34, cw / n * 0.62);
     var gap = (cw - bw * n) / (n + 1);
+    var step = n > 14 ? Math.ceil(n / 12) : 1;
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     labels.forEach(function (lb, i) {
       var x = padL + gap + (bw + gap) * i;
       var bh = (values[i] / max) * ch; var y = padT + ch - bh;
-      ctx.fillStyle = Array.isArray(color) ? color[i] : (color || '#5b8def');
+      ctx.fillStyle = Array.isArray(color) ? color[i] : (color || th.line);
       if (bh > 0) { roundRect(ctx, x, y, bw, bh, 4); ctx.fill(); }
-      ctx.fillStyle = '#6b7585'; ctx.fillText(lb, x + bw / 2, padT + ch + 5);
-      if (values[i] > 0) { ctx.fillStyle = '#2b3442'; ctx.font = '10px sans-serif'; ctx.fillText(values[i], x + bw / 2, y - 12); ctx.font = '10px sans-serif'; }
+      if (n <= 14 && values[i] > 0) { ctx.fillStyle = th.value; ctx.font = '10px sans-serif'; ctx.fillText(values[i], x + bw / 2, y - 12); ctx.font = '10px sans-serif'; }
+      if (i % step === 0 || i === n - 1) { ctx.fillStyle = th.label; ctx.fillText(lb, x + bw / 2, padT + ch + 6); }
+      barHitData.push({ x: x, w: bw, top: padT, bottom: padT + ch, date: datesArr ? datesArr[i] : null, cat: catsArr ? catsArr[i] : null });
     });
   }
   function roundRect(ctx, x, y, w, h, r) {
@@ -734,30 +846,35 @@
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function drawLine(canvas, labels, values) {
+  function drawLine(canvas, labels, values, datesArr) {
+    lineHitData = [];
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
+    var th = chartTheme();
+    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
     var max = Math.max.apply(null, values.concat([1]));
-    var padL = 32, padR = 10, padT = 12, padB = 24, cw = w - padL - padR, ch = h - padT - padB;
-    ctx.strokeStyle = '#eef2f8'; ctx.fillStyle = '#9aa4b4'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    var padL = 32, padR = 10, padT = 14, padB = 26, cw = w - padL - padR, ch = h - padT - padB;
+    ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (var i = 0; i <= 4; i++) {
       var y = padT + ch - (i / 4) * ch;
       ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
       ctx.fillText(Math.round((i / 4) * max), padL - 5, y);
     }
-    if (values.every(function (v) { return v === 0; })) { ctx.fillStyle = '#b7c0cf'; ctx.textAlign = 'center'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
+    if (values.every(function (v) { return v === 0; })) { ctx.fillStyle = th.muted; ctx.textAlign = 'center'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
     var n = labels.length, stepX = n > 1 ? cw / (n - 1) : 0;
     var pts = values.map(function (v, i) { return { x: padL + (n > 1 ? stepX * i : cw / 2), y: padT + ch - (v / max) * ch }; });
     ctx.beginPath(); ctx.moveTo(pts[0].x, padT + ch);
     pts.forEach(function (p) { ctx.lineTo(p.x, p.y); }); ctx.lineTo(pts[pts.length - 1].x, padT + ch); ctx.closePath();
     var grad = ctx.createLinearGradient(0, padT, 0, padT + ch);
-    grad.addColorStop(0, 'rgba(91,141,239,0.28)'); grad.addColorStop(1, 'rgba(91,141,239,0.02)');
+    grad.addColorStop(0, th.lfTop); grad.addColorStop(1, th.lfBot);
     ctx.fillStyle = grad; ctx.fill();
     ctx.beginPath();
     pts.forEach(function (p, i) { if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); });
-    ctx.strokeStyle = '#5b8def'; ctx.lineWidth = 2; ctx.stroke();
-    pts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = '#5b8def'; ctx.fill(); });
-    ctx.fillStyle = '#6b7585'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    labels.forEach(function (lb, i) { ctx.fillText(lb, n > 1 ? padL + stepX * i : cw / 2 + padL, padT + ch + 5); });
+    ctx.strokeStyle = th.line; ctx.lineWidth = 2; ctx.stroke();
+    pts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = th.line; ctx.fill(); });
+    var step = n > 14 ? Math.ceil(n / 12) : 1;
+    ctx.fillStyle = th.label; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    labels.forEach(function (lb, i) { if (i % step === 0 || i === n - 1) ctx.fillText(lb, n > 1 ? padL + stepX * i : cw / 2 + padL, padT + ch + 6); });
+    pts.forEach(function (p, i) { lineHitData.push({ x: p.x, y: p.y, date: datesArr ? datesArr[i] : null }); });
   }
 
   /* ---------------- init ---------------- */
