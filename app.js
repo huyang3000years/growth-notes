@@ -416,15 +416,15 @@
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     var catChips = state.categories.map(function (c) {
-      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + esc(c.name) + '</button>';
     }).join('');
     overlay.innerHTML =
       '<div class="modal-box">' +
       '<h3 class="modal-title">编辑记录</h3>' +
       '<label class="lbl">分类</label>' +
       '<div class="chips" id="editCats">' + catChips + '</div>' +
-      '<label class="lbl">事项（可换行，最多显示两行）</label>' +
-      '<textarea id="editContent" class="modal-input modal-textarea" rows="2" placeholder="如：跳绳100个（可换行）">' + esc(r.content || '') + '</textarea>' +
+      '<label class="lbl">事项（可换行）</label>' +
+      '<textarea id="editContent" class="modal-input modal-textarea" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(r.content || '') + '</textarea>' +
       '<label class="lbl">分钟</label>' +
       '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
       '<div class="modal-actions">' +
@@ -435,6 +435,8 @@
     var selCat = r.catId;
     var contentEl = overlay.querySelector('#editContent');
     contentEl.focus();
+    autoGrow(contentEl);
+    contentEl.addEventListener('input', function () { autoGrow(contentEl); });
     overlay.querySelectorAll('#editCats .chip').forEach(function (b) {
       b.addEventListener('click', function () {
         selCat = b.dataset.cat;
