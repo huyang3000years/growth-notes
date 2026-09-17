@@ -306,6 +306,17 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .bd-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 .bd-item b { margin-left: auto; color: #5b8def; font-weight: 800; }
 
+/* 当日明细：按大类分组（大类名 + 总时长 → 横线 → 具体事项） */
+.settings-top-btn { margin-top: 0; margin-bottom: 14px; }
+.bd-group { margin-bottom: 14px; }
+.bd-group:last-child { margin-bottom: 4px; }
+.bd-group-head { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 800; color: #1f2733; }
+.bd-group-head b { margin-left: auto; color: #5b8def; font-weight: 800; }
+.bd-rule { border-top: 1px solid #eef2f8; margin: 7px 0 4px; }
+.bd-items { list-style: none; margin: 0; padding: 0; }
+.bd-items .mr-item { padding: 7px 0; border: none; }
+.bd-items .mr-item .mr-title { font-size: 13px; }
+
 /* 深色模式（跟随系统，图表画布也会同步配色，黑色背景下数字清晰可见） */
 @media (prefers-color-scheme: dark) {
   body { background: #0e1320; color: #e6ecf6; }
@@ -370,4 +381,8 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
   .wg-cell.wg-zero { color: #4a5670; }
   .bd-item { color: #e6ecf6; border-color: #2a3650; }
   .bd-item b { color: #8fb4ff; }
+  .bd-group-head { color: #f2f6fd; }
+  .bd-group-head b { color: #8fb4ff; }
+  .bd-rule { border-color: #2a3650; }
+  .bd-items .mr-title { color: #e6ecf6; }
 }
