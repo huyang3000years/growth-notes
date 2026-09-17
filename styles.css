@@ -187,6 +187,13 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .pano-modal-tip { color: #c8d2e0; padding: 0 16px 8px; }
 .land-hint { display: none; text-align: center; color: #9fb0c4; font-size: 12px; padding: 2px 16px 8px; }
 @media (orientation: portrait) { .pano-modal .land-hint { display: block; } }
+
+/* 设置页搜索 & 关键字记录图 */
+.search-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.search-row .modal-input { flex: 1 1 auto; margin: 0; }
+.search-results { margin-top: 4px; }
+.kw-chart-box { width: min(94vw, 760px); }
+.kw-chart-box .pano-scroll { max-height: 60vh; }
 .pano-modal-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 6px 14px 28px; }
 .pano-grid-lg { font-size: 15px; gap: 6px; }
 .pano-grid-lg .wg-cell { padding: 12px 6px; border-radius: 10px; }
