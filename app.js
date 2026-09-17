@@ -376,8 +376,8 @@
       '<h3 class="modal-title">编辑记录</h3>' +
       '<label class="lbl">分类</label>' +
       '<div class="chips" id="editCats">' + catChips + '</div>' +
-      '<label class="lbl">事项</label>' +
-      '<input type="text" id="editContent" class="modal-input" value="' + esc(r.content || '') + '" placeholder="如：跳绳100个">' +
+      '<label class="lbl">事项（可换行，最多显示两行）</label>' +
+      '<textarea id="editContent" class="modal-input modal-textarea" rows="2" placeholder="如：跳绳100个（可换行）">' + esc(r.content || '') + '</textarea>' +
       '<label class="lbl">分钟</label>' +
       '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
       '<div class="modal-actions">' +
@@ -919,7 +919,7 @@
       ctx.fillStyle = Array.isArray(color) ? color[i] : (color || th.line);
       if (bh > 0) { roundRect(ctx, x, y, bw, bh, 4); ctx.fill(); }
       if ((n <= 14 || (labelShow && labelShow[i])) && values[i] > 0) { ctx.fillStyle = th.value; ctx.font = '10px sans-serif'; ctx.fillText(values[i], x + bw / 2, y - 12); ctx.font = '10px sans-serif'; }
-      if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) { ctx.fillStyle = th.label; ctx.fillText(lb, x + bw / 2, padT + ch + 6); }
+      if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) { ctx.fillStyle = th.label; var lx = Math.max(padL + 14, Math.min(w - padR - 14, x + bw / 2)); ctx.fillText(lb, lx, padT + ch + 6); }
       barHitData.push({ x: x, w: bw, top: padT, bottom: padT + ch, date: datesArr ? datesArr[i] : null, cat: catsArr ? catsArr[i] : null });
     });
   }
@@ -954,9 +954,22 @@
     pts.forEach(function (p, i) { if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); });
     ctx.strokeStyle = th.line; ctx.lineWidth = 2; ctx.stroke();
     pts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = th.line; ctx.fill(); });
+    /* 关键日期（与「每日时长」柱状图一致）在点上显示数值，横轴只标那几个日期 */
+    if (labelShow) {
+      ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      for (var vi = 0; vi < n; vi++) {
+        if (labelShow[vi] && values[vi] > 0) { ctx.fillStyle = th.value; ctx.fillText(values[vi], pts[vi].x, pts[vi].y - 7); }
+      }
+      ctx.textBaseline = 'top';
+    }
     var step = n > 14 ? Math.ceil(n / 12) : 1;
     ctx.fillStyle = th.label; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    labels.forEach(function (lb, i) { if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) ctx.fillText(lb, n > 1 ? padL + stepX * i : cw / 2 + padL, padT + ch + 6); });
+    labels.forEach(function (lb, i) {
+      if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) {
+        var lx = Math.max(padL + 14, Math.min(w - padR - 14, n > 1 ? padL + stepX * i : cw / 2 + padL));
+        ctx.fillText(lb, lx, padT + ch + 6);
+      }
+    });
     pts.forEach(function (p, i) { lineHitData.push({ x: p.x, y: p.y, date: datesArr ? datesArr[i] : null }); });
   }
 
