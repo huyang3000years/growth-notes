@@ -16,7 +16,8 @@
     rows: [{ content: '', minutes: '' }],
     recDate: fmtDate(new Date()),
     statsRange: 'week',
-    statsDate: fmtDate(new Date())
+    statsDate: fmtDate(new Date()),
+    editId: null
   };
   var currentView = 'record';
   var store = createLocalStore();
@@ -124,12 +125,16 @@
     if (!recs.length) return '<li class="rec-empty">这一天还没有记录，开始添加吧～</li>';
     return recs.map(function (r) {
       var c = findCat(r.catId);
-      return '<li class="rec-item">' +
+      var editing = ui.editId === r.id;
+      return '<li class="rec-item' + (editing ? ' editing' : '') + '">' +
         '<span class="rec-dot" style="background:' + (c ? c.color : '#999') + '"></span>' +
         '<div class="rec-main"><div class="rec-title">' + esc(r.content || '') + '</div>' +
         '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + r.date + '</div></div>' +
         '<div class="rec-time">' + r.minutes + '分</div>' +
-        '<button class="rec-del" data-del="' + r.id + '">✕</button></li>';
+        '<div class="rec-actions">' +
+        '<button class="rec-edit" data-edit="' + r.id + '" title="编辑">✎</button>' +
+        '<button class="rec-del" data-del="' + r.id + '" title="删除">✕</button>' +
+        '</div></li>';
     }).join('');
   }
 
@@ -144,6 +149,7 @@
 
     root.innerHTML =
       '<div class="card">' +
+      (ui.editId ? '<div class="edit-banner">✏️ 正在编辑一条记录 <button type="button" class="link-btn" id="cancelEdit">取消</button></div>' : '') +
       '<label class="lbl">日期</label>' +
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
@@ -167,8 +173,16 @@
     root.querySelector('#addRow').addEventListener('click', function () { ui.rows.push({ content: '', minutes: '' }); renderRows(); });
     root.querySelector('#recSave').addEventListener('click', saveRecord);
     root.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () { store.op('deleteRecord', { id: b.dataset.del }); });
+      b.addEventListener('click', function () {
+        if (ui.editId === b.dataset.del) ui.editId = null;
+        store.op('deleteRecord', { id: b.dataset.del });
+      });
     });
+    root.querySelectorAll('[data-edit]').forEach(function (b) {
+      b.addEventListener('click', function () { startEdit(b.dataset.edit); });
+    });
+    var cancelEdit = root.querySelector('#cancelEdit');
+    if (cancelEdit) cancelEdit.addEventListener('click', function () { ui.editId = null; ui.rows = [{ content: '', minutes: '' }]; renderRecord(); });
     renderRows();
   }
 
@@ -218,12 +232,33 @@
       toSave.push({ content: content, minutes: minutes });
     }
     if (!toSave.length) { alert('请至少填写一行「事项内容 + 时长」'); return; }
-    toSave.forEach(function (item) {
-      store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
-    });
+    if (ui.editId) {
+      var first = toSave[0];
+      store.op('updateRecord', { id: ui.editId, fields: { date: ui.recDate, catId: ui.catId, content: first.content, minutes: first.minutes } });
+      for (var k = 1; k < toSave.length; k++) {
+        store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: toSave[k].content, minutes: toSave[k].minutes, createdAt: Date.now() } });
+      }
+      ui.editId = null;
+    } else {
+      toSave.forEach(function (item) {
+        store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
+      });
+    }
     ui.rows = [{ content: '', minutes: '' }];
     renderRows();
     refreshRecordList();
+  }
+
+  function startEdit(id) {
+    var r = null;
+    for (var i = 0; i < state.records.length; i++) if (state.records[i].id === id) { r = state.records[i]; break; }
+    if (!r) return;
+    ui.editId = id;
+    ui.recDate = r.date;
+    ui.catId = r.catId;
+    ui.rows = [{ content: r.content || '', minutes: r.minutes }];
+    renderRecord();
+    if (window.scrollTo) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /* ---------------- stats view ---------------- */
