@@ -82,7 +82,7 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
 .ri-field.ri-min { flex: 0 0 92px; }
 .ri-lbl { font-size: 12px; color: #8a94a6; margin-bottom: 4px; }
 .ri-content, .ri-minutes { width: 100%; box-sizing: border-box; }
-textarea.ri-content { min-height: 42px; max-height: 132px; resize: none; overflow-y: auto; white-space: pre-wrap; word-break: break-word; line-height: 1.45; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
+textarea.ri-content { min-height: 44px; max-height: 68px; resize: none; overflow-y: auto; white-space: pre-wrap; word-break: break-word; line-height: 1.45; font-family: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
 .btn-add-row { width: 100%; margin-top: 8px; border: 1px dashed #b9c6e0; background: #fbfdff; color: #5b8def; border-radius: 11px; padding: 11px; font-size: 14px; font-weight: 700; }
 .btn-add-row:active { background: #eef4ff; }
 textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
@@ -159,7 +159,7 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .modal-box { background: #fff; width: 100%; max-width: 360px; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: 18px; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
 .modal-title { font-size: 16px; margin: 0 0 14px; color: #1f2733; }
 .modal-input { margin-bottom: 12px; }
-.modal-textarea { width: 100%; min-height: 42px; max-height: 132px; resize: none; overflow-y: auto; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 15px; padding: 10px 13px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
+.modal-textarea { width: 100%; min-height: 44px; max-height: 68px; resize: none; overflow-y: auto; line-height: 1.45; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 15px; padding: 10px 13px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 11px; color: #1f2733; outline: none; }
 .modal-textarea:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgba(91,141,239,0.15); }
 .modal-actions { display: flex; gap: 10px; margin-top: 6px; }
 .modal-actions .btn-ghost, .modal-actions .btn-primary { margin: 0; }
