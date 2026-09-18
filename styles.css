@@ -231,13 +231,12 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .cat-table { width: 100%; border-collapse: collapse; }
 .cat-table th, .cat-table td { padding: 11px 10px; font-size: 14px; border-bottom: 1px solid #eef1f6; text-align: left; vertical-align: middle; }
 .cat-table th { font-size: 12px; font-weight: 600; color: #8a93a3; }
-.cat-table tr:last-child td { border-bottom: none; }
 .cat-table .ct-cat { display: flex; align-items: center; gap: 9px; font-weight: 600; color: #1f2733; white-space: nowrap; }
 .cat-table .ct-emoji { font-size: 18px; line-height: 1; flex: 0 0 auto; }
 .cat-table .ct-time { color: #4a5464; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cat-table .ct-unit { color: #aab2c0; font-size: 12px; margin-left: 1px; }
-.cat-table .ct-pct { display: flex; align-items: center; gap: 10px; }
-.cat-table .ct-pct-h { width: 45%; }
+.cat-table .ct-pct { width: 45%; }
+.cat-table .ct-pct-inner { display: flex; align-items: center; gap: 10px; }
 .cat-table .ct-num { flex: 0 0 auto; min-width: 48px; color: #1f2733; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cat-table .ct-track { flex: 1 1 auto; height: 8px; border-radius: 4px; background: #eef1f6; overflow: hidden; }
 .cat-table .ct-bar { display: block; height: 100%; border-radius: 4px; background: #5b8def; }
