@@ -480,6 +480,7 @@
       return { id: c.id, name: c.name, value: m, color: c.color };
     }).filter(function (x) { return x.value > 0; });
     byCat = distinctColors(byCat);
+    byCat.sort(function (a, b) { return b.value - a.value; });
 
     var byDayLabels = dates.map(function (d) {
       if (ui.statsRange === 'week') { var wd = ['一', '二', '三', '四', '五', '六', '日']; return '周' + wd[(parseDate(d).getDay() + 6) % 7]; }
@@ -525,7 +526,7 @@
       sumCard(totalMin, '总时长(分)') + sumCard(recs.length, '记录数') + sumCard(catKeys.length, '涉及分类') + sumCard(dayKeys.length, '天数') +
       '</div>' +
       '<div class="card"><h3 class="section-title">' + (single ? '当日分类占比' : '分类占比') + '</h3>' +
-      '<canvas id="chartCat" class="chart"></canvas><div id="legendCat" class="legend"></div></div>' +
+      '<div id="catTableBox"></div></div>' +
       '<div class="card"><h3 class="section-title">' + (single ? '当日各分类时长' : '每日时长') + '</h3>' +
       '<div class="zoom-bar" id="zoomBar" hidden><span>已放大 · 双指缩放 / 拖动</span><button type="button" class="zoom-reset" id="zoomReset">查看全部</button></div>' +
       '<canvas id="chartBar" class="chart"></canvas></div>' +
@@ -561,8 +562,7 @@
     rtabs.forEach(function (b) { b.addEventListener('click', function () { ui.statsRange = b.dataset.r; renderStats(); }); });
     root.querySelector('#statsDate').addEventListener('change', function (e) { ui.statsDate = e.target.value; renderStats(); });
 
-    drawDoughnut(document.getElementById('chartCat'), byCat);
-    drawLegend(document.getElementById('legendCat'), byCat);
+    renderCatTable(document.getElementById('catTableBox'), byCat);
     ui.zoom = null;
     chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
     var vChart = sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow);
@@ -1013,45 +1013,25 @@
       return { id: it.id, name: it.name, value: it.value, color: col };
     });
   }
-  function drawDoughnut(canvas, data) {
-    var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
-    var th = chartTheme();
-    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
-    var total = data.reduce(function (s, d) { return s + d.value; }, 0);
-    if (total <= 0) { ctx.fillStyle = th.muted; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
-    var cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 8, ir = r * 0.58;
-    var start = -Math.PI / 2;
-    data.forEach(function (d) {
-      var ang = (d.value / total) * Math.PI * 2;
-      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, start + ang); ctx.closePath();
-      ctx.fillStyle = d.color; ctx.fill(); start += ang;
-    });
-    ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2); ctx.fillStyle = th.bg; ctx.fill();
-    ctx.fillStyle = th.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = 'bold 20px sans-serif'; ctx.fillText(total + '分', cx, cy - 6);
-    ctx.fillStyle = th.muted; ctx.font = '11px sans-serif'; ctx.fillText('总时长', cx, cy + 14);
-    /* 各分类占比百分比：仅对 >=6% 的扇区标注，避免文字拥挤 */
-    start = -Math.PI / 2;
-    data.forEach(function (d) {
-      var ang = (d.value / total) * Math.PI * 2;
-      var pct = d.value / total * 100;
-      if (pct >= 6) {
-        var mid = start + ang / 2, rr = (r + ir) / 2;
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(Math.round(pct) + '%', cx + Math.cos(mid) * rr, cy + Math.sin(mid) * rr);
-      }
-      start += ang;
-    });
-  }
-  function drawLegend(el, data) {
-    if (!data.length) { el.innerHTML = ''; return; }
+  function renderCatTable(el, data) {
+    if (!el) return;
+    if (!data.length) { el.innerHTML = '<p class="modal-empty">该范围暂无记录</p>'; return; }
     var total = data.reduce(function (s, d) { return s + d.value; }, 0) || 1;
-    el.innerHTML = data.map(function (d) {
-      var pct = Math.round(d.value / total * 100);
-      return '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + ' <b>' + d.value + '分·' + pct + '%</b></span>';
+    var rows = data.map(function (d) {
+      var pct = d.value / total * 100;
+      var pctText = Math.round(pct * 10) / 10;
+      pctText = (pctText % 1 === 0) ? String(pctText) : pctText.toFixed(1);
+      return '<tr>' +
+        '<td class="ct-cat"><span class="ct-dot" style="background:' + d.color + '"></span>' + esc(d.name) + '</td>' +
+        '<td class="ct-time">' + d.value + '</td>' +
+        '<td class="ct-pct"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%;background:' + d.color + '"></span><span class="ct-num">' + pctText + '%</span></td>' +
+        '</tr>';
     }).join('');
+    el.innerHTML =
+      '<table class="cat-table">' +
+      '<thead><tr><th>分类</th><th>时间(分)</th><th>占比</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+      '</table>';
   }
   function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow) {
     barHitData = [];
