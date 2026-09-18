@@ -477,7 +477,7 @@
 
     var byCat = state.categories.map(function (c) {
       var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
-      return { id: c.id, name: c.name, value: m, color: c.color };
+      return { id: c.id, name: c.name, value: m, color: c.color, icon: c.icon };
     }).filter(function (x) { return x.value > 0; });
     byCat = distinctColors(byCat);
     byCat.sort(function (a, b) { return b.value - a.value; });
@@ -1022,14 +1022,15 @@
       var pctText = Math.round(pct * 10) / 10;
       pctText = (pctText % 1 === 0) ? String(pctText) : pctText.toFixed(1);
       return '<tr>' +
-        '<td class="ct-cat"><span class="ct-dot" style="background:' + d.color + '"></span>' + esc(d.name) + '</td>' +
-        '<td class="ct-time">' + d.value + '</td>' +
-        '<td class="ct-pct"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%;background:' + d.color + '"></span><span class="ct-num">' + pctText + '%</span></td>' +
+        '<td class="ct-cat"><span class="ct-emoji">' + (d.icon || '') + '</span>' + esc(d.name) + '</td>' +
+        '<td class="ct-time">' + d.value + '<span class="ct-unit">分</span></td>' +
+        '<td class="ct-pct"><span class="ct-num">' + pctText + '%</span>' +
+        '<span class="ct-track"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%"></span></span></td>' +
         '</tr>';
     }).join('');
     el.innerHTML =
       '<table class="cat-table">' +
-      '<thead><tr><th>分类</th><th>时间(分)</th><th>占比</th></tr></thead>' +
+      '<thead><tr><th>分类</th><th>时间</th><th class="ct-pct-h">占比</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
       '</table>';
   }
