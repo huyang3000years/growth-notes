@@ -562,7 +562,7 @@
     rtabs.forEach(function (b) { b.addEventListener('click', function () { ui.statsRange = b.dataset.r; renderStats(); }); });
     root.querySelector('#statsDate').addEventListener('change', function (e) { ui.statsDate = e.target.value; renderStats(); });
 
-    renderCatTable(document.getElementById('catTableBox'), byCat);
+    renderCatTable(document.getElementById('catTableBox'), byCat, { single: single, date: single ? ui.statsDate : null });
     ui.zoom = null;
     chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
     var vChart = sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow);
@@ -702,7 +702,7 @@
           '<span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
           '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
           '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + '</div></div>' +
-          '<div class="mr-min">' + r.minutes + '分</div></li>';
+          '<div class="mr-min">' + r.minutes + ' min</div></li>';
       }).join('') + '</ul>';
     }
     overlay.innerHTML =
@@ -785,7 +785,7 @@
       var items = grp.map(function (r) {
         return '<li class="mr-item">' +
           '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div></div>' +
-          '<div class="mr-min">' + r.minutes + '分</div></li>';
+          '<div class="mr-min">' + r.minutes + ' min</div></li>';
       }).join('');
       groupHtml += '<div class="bd-group">' +
         '<div class="bd-group-head"><span class="bd-dot" style="background:' + cat.color + '"></span>' + esc(cat.name) + '<b>' + gTotal + ' min</b></div>' +
@@ -852,7 +852,7 @@
           '<span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
           '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
           '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + ' · ' + r.date + '</div></div>' +
-          '<div class="mr-min">' + r.minutes + '分</div></li>';
+          '<div class="mr-min">' + r.minutes + ' min</div></li>';
       }).join('') + '</ul>';
       sRes.querySelectorAll('[data-edit]').forEach(function (b) {
         b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
@@ -1010,19 +1010,23 @@
         col = palette.filter(function (p) { return !used[p]; })[0] || col || '#5b8def';
       }
       used[col] = 1;
-      return { id: it.id, name: it.name, value: it.value, color: col };
+      return { id: it.id, name: it.name, value: it.value, color: col, icon: it.icon };
     });
   }
-  function renderCatTable(el, data) {
+  function renderCatTable(el, data, opts) {
+    opts = opts || {};
     if (!el) return;
     if (!data.length) { el.innerHTML = '<p class="modal-empty">该范围暂无记录</p>'; return; }
     var total = data.reduce(function (s, d) { return s + d.value; }, 0) || 1;
+    var clickable = (opts.single && opts.date);
     var rows = data.map(function (d) {
       var pct = d.value / total * 100;
       var pctText = Math.round(pct * 10) / 10;
       pctText = (pctText % 1 === 0) ? String(pctText) : pctText.toFixed(1);
+      var catCls = clickable ? 'ct-cat ct-clickable' : 'ct-cat';
+      var catAttr = clickable ? ' data-cat="' + d.id + '" title="点击查看当日该分类明细"' : '';
       return '<tr>' +
-        '<td class="ct-cat"><span class="ct-emoji">' + (d.icon || '') + '</span>' + esc(d.name) + '</td>' +
+        '<td class="' + catCls + '"' + catAttr + '><span class="ct-emoji">' + (d.icon || '') + '</span>' + esc(d.name) + '</td>' +
         '<td class="ct-time">' + d.value + '<span class="ct-unit">min</span></td>' +
         '<td class="ct-pct"><div class="ct-pct-inner"><span class="ct-num">' + pctText + '%</span>' +
         '<span class="ct-track"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%"></span></span></div></td>' +
@@ -1033,6 +1037,13 @@
       '<thead><tr><th>分类</th><th>时间</th><th class="ct-pct-h">占比</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
       '</table>';
+    if (clickable) {
+      el.querySelectorAll('[data-cat]').forEach(function (cell) {
+        var open = function () { showDayBreakdown(opts.date, cell.getAttribute('data-cat')); };
+        cell.addEventListener('click', open);
+        cell.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      });
+    }
   }
   function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow) {
     barHitData = [];
