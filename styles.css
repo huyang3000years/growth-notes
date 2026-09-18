@@ -249,6 +249,10 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .cat-manage { border: 1px solid #eef2f8; border-radius: 14px; padding: 12px; margin-bottom: 10px; }
 .cm-head { display: flex; align-items: center; gap: 10px; }
 .cm-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex: 0 0 auto; }
+.cm-icon.cm-pickicon { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+.cm-icon.cm-pickicon:hover { transform: scale(1.08); box-shadow: 0 0 0 2px rgba(91,141,239,0.45); }
+.cm-icon.cm-pickicon:active { transform: scale(0.94); }
+.icon-pick-pop .icon-pick { max-height: 50vh; overflow-y: auto; padding: 2px; }
 .cm-name { flex: 1 1 auto; border: 1px solid #eef2f8; background: #fbfdff; border-radius: 9px; padding: 8px 10px; font-size: 14px; }
 .cm-del { border: 1px solid #ffd6df; background: #fff5f7; color: #d6446a; border-radius: 9px; padding: 8px 10px; font-size: 12px; }
 .cm-subs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
