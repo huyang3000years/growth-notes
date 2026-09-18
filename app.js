@@ -183,7 +183,7 @@
         '<span class="rec-dot" style="background:' + (c ? c.color : '#999') + '"></span>' +
         '<div class="rec-main"><div class="rec-title">' + esc(r.content || '') + '</div>' +
         '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + r.date + '</div></div>' +
-        '<div class="rec-time">' + r.minutes + '分</div>' +
+        '<div class="rec-time">' + r.minutes + ' min</div>' +
         '<div class="rec-actions">' +
         '<button class="rec-edit" data-edit="' + r.id + '" title="编辑">✎</button>' +
         '<button class="rec-del" data-del="' + r.id + '" title="删除">✕</button>' +
@@ -212,8 +212,8 @@
     var todayTotal = state.records.filter(function (r) { return r.date === today; }).reduce(function (s, r) { return s + r.minutes; }, 0);
     var weekTotal = state.records.filter(function (r) { return week.indexOf(r.date) >= 0; }).reduce(function (s, r) { return s + r.minutes; }, 0);
     var streak = computeStreak();
-    return '<div class="dash-card"><div class="dash-num">' + todayTotal + '</div><div class="dash-lbl">今日(分)</div></div>' +
-      '<div class="dash-card"><div class="dash-num">' + weekTotal + '</div><div class="dash-lbl">本周(分)</div></div>' +
+    return '<div class="dash-card"><div class="dash-num">' + todayTotal + '</div><div class="dash-lbl">今日(min)</div></div>' +
+      '<div class="dash-card"><div class="dash-num">' + weekTotal + '</div><div class="dash-lbl">本周(min)</div></div>' +
       '<div class="dash-card"><div class="dash-num">' + streak + '</div><div class="dash-lbl">连续(天)</div></div>';
   }
   function renderDashboard() {
@@ -331,7 +331,7 @@
       return '<div class="rec-row">' +
         '<div class="ri-field"><label class="ri-lbl">事项（可换行）</label>' +
         '<textarea class="ri-content" data-row="' + i + '" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(row.content) + '</textarea></div>' +
-        '<div class="ri-field ri-min"><label class="ri-lbl">分钟</label>' +
+        '<div class="ri-field ri-min"><label class="ri-lbl">min</label>' +
         '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
         '</div>';
@@ -432,7 +432,7 @@
       '<div class="chips" id="editCats">' + catChips + '</div>' +
       '<label class="lbl">事项（可换行）</label>' +
       '<textarea id="editContent" class="modal-input modal-textarea" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(r.content || '') + '</textarea>' +
-      '<label class="lbl">分钟</label>' +
+      '<label class="lbl">min</label>' +
       '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
       '<div class="modal-actions">' +
       '<button type="button" class="btn-ghost" id="editCancel">取消</button>' +
@@ -523,7 +523,7 @@
       '<input type="date" id="statsDate" value="' + ui.statsDate + '">' +
       '</div>' +
       '<div class="summary">' +
-      sumCard(totalMin, '总时长(分)') + sumCard(recs.length, '记录数') + sumCard(catKeys.length, '涉及分类') + sumCard(dayKeys.length, '天数') +
+      sumCard(totalMin, '总时长(min)') + sumCard(recs.length, '记录数') + sumCard(catKeys.length, '涉及分类') + sumCard(dayKeys.length, '天数') +
       '</div>' +
       '<div class="card"><h3 class="section-title">' + (single ? '当日分类占比' : '分类占比') + '</h3>' +
       '<div id="catTableBox"></div></div>' +
@@ -541,7 +541,7 @@
       '</select>' +
       '<button class="pano-zoom" id="panoZoom" type="button" title="横屏查看表格"><svg class="rot-ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 L19 5"/><polyline points="9 19 5 19 5 15"/><polyline points="15 5 19 5 19 9"/></svg> 横屏</button>' +
       '</div></div>' +
-      '<p class="tip" style="padding:2px 2px 8px">点格子看当日明细 · 单位：分钟</p>' +
+      '<p class="tip" style="padding:2px 2px 8px">点格子看当日明细 · 单位：min</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="panoGrid"></div></div>' +
       '<div class="modal-overlay pano-modal" id="panoModal" hidden>' +
         '<div class="pano-modal-box">' +
@@ -553,7 +553,7 @@
             '<button class="pzc" id="panoZoomFit" type="button" title="适应屏幕">适应</button>' +
             '<button class="modal-close pano-modal-close" id="panoModalClose" type="button" title="关闭">✕</button>' +
           '</div></div>' +
-          '<p class="tip pano-modal-tip">点格子看明细 · 单位：分钟</p>' +
+          '<p class="tip pano-modal-tip">点格子看明细 · 单位：min</p>' +
           '<div class="pano-modal-scroll"><div class="pano-grid pano-grid-lg" id="panoModalGrid"></div></div>' +
         '</div>' +
       '</div></div>';
@@ -737,9 +737,9 @@
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
       '<div class="modal-box kw-chart-box">' +
-      '<div class="modal-title-row"><h3 class="modal-title">「' + esc(keyword) + '」记录分布 · 共 ' + total + ' 分</h3>' +
+      '<div class="modal-title-row"><h3 class="modal-title">「' + esc(keyword) + '」记录分布 · 共 ' + total + ' min</h3>' +
       '<button class="modal-close" id="kwClose" type="button" title="关闭">✕</button></div>' +
-      '<p class="tip" style="padding:0 2px 8px">点格子看该日匹配明细 · 单位：分钟</p>' +
+      '<p class="tip" style="padding:0 2px 8px">点格子看该日匹配明细 · 单位：min</p>' +
       '<div class="pano-scroll"><div class="pano-grid" id="kwGrid"></div></div></div>';
     document.body.appendChild(overlay);
     var grid = overlay.querySelector('#kwGrid');
@@ -788,7 +788,7 @@
           '<div class="mr-min">' + r.minutes + '分</div></li>';
       }).join('');
       groupHtml += '<div class="bd-group">' +
-        '<div class="bd-group-head"><span class="bd-dot" style="background:' + cat.color + '"></span>' + esc(cat.name) + '<b>' + gTotal + '分</b></div>' +
+        '<div class="bd-group-head"><span class="bd-dot" style="background:' + cat.color + '"></span>' + esc(cat.name) + '<b>' + gTotal + ' min</b></div>' +
         '<div class="bd-rule"></div>' +
         '<ul class="bd-items">' + items + '</ul>' +
         '</div>';
@@ -1023,9 +1023,9 @@
       pctText = (pctText % 1 === 0) ? String(pctText) : pctText.toFixed(1);
       return '<tr>' +
         '<td class="ct-cat"><span class="ct-emoji">' + (d.icon || '') + '</span>' + esc(d.name) + '</td>' +
-        '<td class="ct-time">' + d.value + '<span class="ct-unit">分</span></td>' +
-        '<td class="ct-pct"><span class="ct-num">' + pctText + '%</span>' +
-        '<span class="ct-track"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%"></span></span></td>' +
+        '<td class="ct-time">' + d.value + '<span class="ct-unit">min</span></td>' +
+        '<td class="ct-pct"><div class="ct-pct-inner"><span class="ct-num">' + pctText + '%</span>' +
+        '<span class="ct-track"><span class="ct-bar" style="width:' + pct.toFixed(1) + '%"></span></span></div></td>' +
         '</tr>';
     }).join('');
     el.innerHTML =
