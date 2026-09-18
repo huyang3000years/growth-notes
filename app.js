@@ -59,9 +59,8 @@
   }
   function findCat(id) { for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i]; return null; }
 
-  /* 图表命中检测（点击柱状/折线用） */
+  /* 图表命中检测（点击柱状用） */
   var barHitData = [];
-  var lineHitData = [];
   var chartData = null;
 
   /* 主题：根据系统深色模式选择图表配色，并显式填充背景，保证夜间模式可读 */
@@ -480,6 +479,7 @@
       var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
       return { id: c.id, name: c.name, value: m, color: c.color };
     }).filter(function (x) { return x.value > 0; });
+    byCat = distinctColors(byCat);
 
     var byDayLabels = dates.map(function (d) {
       if (ui.statsRange === 'week') { var wd = ['一', '二', '三', '四', '五', '六', '日']; return '周' + wd[(parseDate(d).getDay() + 6) % 7]; }
@@ -497,7 +497,6 @@
     }
 
     var single = dates.length === 1;
-    var barPalette = ['#5b8def', '#7c5cff', '#06d6a0', '#ffb703', '#ef476f', '#4ecdc4', '#f78c6b'];
     var barLabels, barVals, barColors, barDates, barCats;
     if (single) {
       barLabels = byCat.map(function (x) { return x.name; });
@@ -508,7 +507,7 @@
     } else {
       barLabels = byDayLabels;
       barVals = byDayVals;
-      barColors = dates.map(function (d, i) { return barPalette[i % barPalette.length]; });
+      barColors = dates.map(function () { return '#5b8def'; });
       barDates = dates.slice();
       barCats = dates.map(function () { return null; });
     }
@@ -530,8 +529,6 @@
       '<div class="card"><h3 class="section-title">' + (single ? '当日各分类时长' : '每日时长') + '</h3>' +
       '<div class="zoom-bar" id="zoomBar" hidden><span>已放大 · 双指缩放 / 拖动</span><button type="button" class="zoom-reset" id="zoomReset">查看全部</button></div>' +
       '<canvas id="chartBar" class="chart"></canvas></div>' +
-      '<div class="card"><h3 class="section-title">时长趋势</h3>' +
-      '<canvas id="chartLine" class="chart"></canvas></div>' +
       '<div class="card"><div class="pano-head"><h3 class="section-title">全景图</h3>' +
       '<div class="pano-head-right">' +
       '<select id="panoRange" class="pano-select">' +
@@ -570,7 +567,6 @@
     chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
     var vChart = sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow);
     drawBars(document.getElementById('chartBar'), vChart.barLabels, vChart.barVals, vChart.barColors, vChart.barDates, vChart.barCats, vChart.labelShow);
-    drawLine(document.getElementById('chartLine'), vChart.byDayLabels, vChart.byDayVals, vChart.dates, vChart.labelShow);
     var canvasBar = document.getElementById('chartBar');
     if (canvasBar) canvasBar.addEventListener('click', function (e) {
       if (!barHitData.length) return;
@@ -579,16 +575,7 @@
       for (var i = 0; i < barHitData.length; i++) { var b = barHitData[i]; if (px >= b.x - 4 && px <= b.x + b.w + 4) { hit = b; break; } }
       if (hit && hit.date) showDayBreakdown(hit.date, hit.cat);
     });
-    var canvasLine = document.getElementById('chartLine');
-    if (canvasLine) canvasLine.addEventListener('click', function (e) {
-      if (!lineHitData.length) return;
-      var r = canvasLine.getBoundingClientRect(); var px = e.clientX - r.left;
-      var hit = null, best = 1e9;
-      for (var i = 0; i < lineHitData.length; i++) { var d = Math.abs(lineHitData[i].x - px); if (d < best) { best = d; hit = lineHitData[i]; } }
-      if (hit && hit.date && best < (r.width / lineHitData.length + 8)) showDayBreakdown(hit.date, null);
-    });
     attachChartZoom(canvasBar);
-    attachChartZoom(canvasLine);
     var zr = root.querySelector('#zoomReset');
     if (zr) zr.addEventListener('click', function () { ui.zoom = null; redrawStatsCharts(); });
     var pg = document.getElementById('panoGrid');
@@ -1014,6 +1001,18 @@
     ctx.clearRect(0, 0, w, h);
     return { ctx: ctx, w: w, h: h };
   }
+  /* 保证传给饼图/图例的颜色互不重复：优先用分类自身颜色，冲突时从调色板取未用过的 */
+  function distinctColors(items) {
+    var used = {}, palette = CAT_COLORS;
+    return items.map(function (it) {
+      var col = it.color;
+      if (!col || used[col]) {
+        col = palette.filter(function (p) { return !used[p]; })[0] || col || '#5b8def';
+      }
+      used[col] = 1;
+      return { id: it.id, name: it.name, value: it.value, color: col };
+    });
+  }
   function drawDoughnut(canvas, data) {
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
     var th = chartTheme();
@@ -1031,11 +1030,27 @@
     ctx.fillStyle = th.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = 'bold 20px sans-serif'; ctx.fillText(total + '分', cx, cy - 6);
     ctx.fillStyle = th.muted; ctx.font = '11px sans-serif'; ctx.fillText('总时长', cx, cy + 14);
+    /* 各分类占比百分比：仅对 >=6% 的扇区标注，避免文字拥挤 */
+    start = -Math.PI / 2;
+    data.forEach(function (d) {
+      var ang = (d.value / total) * Math.PI * 2;
+      var pct = d.value / total * 100;
+      if (pct >= 6) {
+        var mid = start + ang / 2, rr = (r + ir) / 2;
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(pct) + '%', cx + Math.cos(mid) * rr, cy + Math.sin(mid) * rr);
+      }
+      start += ang;
+    });
   }
   function drawLegend(el, data) {
     if (!data.length) { el.innerHTML = ''; return; }
+    var total = data.reduce(function (s, d) { return s + d.value; }, 0) || 1;
     el.innerHTML = data.map(function (d) {
-      return '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + ' <b>' + d.value + '分</b></span>';
+      var pct = Math.round(d.value / total * 100);
+      return '<span class="lg"><i style="background:' + d.color + '"></i>' + esc(d.name) + ' <b>' + d.value + '分·' + pct + '%</b></span>';
     }).join('');
   }
   function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow) {
@@ -1073,50 +1088,6 @@
     ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function drawLine(canvas, labels, values, datesArr, labelShow) {
-    lineHitData = [];
-    var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
-    var th = chartTheme();
-    ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
-    var max = Math.max.apply(null, values.concat([1]));
-    var padL = 32, padR = 10, padT = 14, padB = 26, cw = w - padL - padR, ch = h - padT - padB;
-    ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    for (var i = 0; i <= 4; i++) {
-      var y = padT + ch - (i / 4) * ch;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
-      ctx.fillText(Math.round((i / 4) * max), padL - 5, y);
-    }
-    if (values.every(function (v) { return v === 0; })) { ctx.fillStyle = th.muted; ctx.textAlign = 'center'; ctx.fillText('暂无数据', w / 2, h / 2); return; }
-    var n = labels.length, stepX = n > 1 ? cw / (n - 1) : 0;
-    var pts = values.map(function (v, i) { return { x: padL + (n > 1 ? stepX * i : cw / 2), y: padT + ch - (v / max) * ch }; });
-    ctx.beginPath(); ctx.moveTo(pts[0].x, padT + ch);
-    pts.forEach(function (p) { ctx.lineTo(p.x, p.y); }); ctx.lineTo(pts[pts.length - 1].x, padT + ch); ctx.closePath();
-    var grad = ctx.createLinearGradient(0, padT, 0, padT + ch);
-    grad.addColorStop(0, th.lfTop); grad.addColorStop(1, th.lfBot);
-    ctx.fillStyle = grad; ctx.fill();
-    ctx.beginPath();
-    pts.forEach(function (p, i) { if (i) ctx.lineTo(p.x, p.y); else ctx.moveTo(p.x, p.y); });
-    ctx.strokeStyle = th.line; ctx.lineWidth = 2; ctx.stroke();
-    pts.forEach(function (p) { ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fillStyle = th.line; ctx.fill(); });
-    /* 关键日期（与「每日时长」柱状图一致）在点上显示数值，横轴只标那几个日期 */
-    if (labelShow) {
-      ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      for (var vi = 0; vi < n; vi++) {
-        if (labelShow[vi] && values[vi] > 0) { ctx.fillStyle = th.value; ctx.fillText(values[vi], pts[vi].x, pts[vi].y - 7); }
-      }
-      ctx.textBaseline = 'top';
-    }
-    var step = n > 14 ? Math.ceil(n / 12) : 1;
-    ctx.fillStyle = th.label; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    labels.forEach(function (lb, i) {
-      if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) {
-        var lx = Math.max(padL + 14, Math.min(w - padR - 14, n > 1 ? padL + stepX * i : cw / 2 + padL));
-        ctx.fillText(lb, lx, padT + ch + 6);
-      }
-    });
-    pts.forEach(function (p, i) { lineHitData.push({ x: p.x, y: p.y, date: datesArr ? datesArr[i] : null }); });
-  }
-
   /* 统计图表缩放（双指捏合 / 鼠标滚轮 / 拖动平移），仅改变可见日期窗口，不改变汇总 */
   function sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow) {
     var n = dates.length;
@@ -1179,7 +1150,6 @@
     var c = chartData;
     var v = sliceView(c.dates, c.byDayLabels, c.byDayVals, c.barLabels, c.barVals, c.barColors, c.barDates, c.barCats, c.labelShow);
     drawBars(document.getElementById('chartBar'), v.barLabels, v.barVals, v.barColors, v.barDates, v.barCats, v.labelShow);
-    drawLine(document.getElementById('chartLine'), v.byDayLabels, v.byDayVals, v.dates, v.labelShow);
     updateZoomUI();
   }
   function updateZoomUI() {
