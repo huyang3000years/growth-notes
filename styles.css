@@ -268,6 +268,11 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .cm-icon.cm-pickicon:active { transform: scale(0.94); }
 .icon-pick-pop .icon-pick { max-height: 50vh; overflow-y: auto; padding: 2px; }
 .cm-name { flex: 1 1 auto; border: 1px solid #eef2f8; background: #fbfdff; border-radius: 9px; padding: 8px 10px; font-size: 14px; }
+.cm-seq { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.cm-seq > label { flex: 0 0 auto; font-size: 13px; color: #6b7585; }
+.cm-seq-input { width: 88px; border: 1px solid #e0e6f0; border-radius: 9px; padding: 8px 10px; font-size: 14px; background: #fff; color: #2b3442; }
+.cm-seq-input:focus { outline: none; border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.18); }
+.cm-seq-input.seq-conflict { border-color: #e0536a; background: #fff1f4; color: #d6446a; box-shadow: 0 0 0 3px rgba(224,83,106,0.18); }
 .cm-del { border: 1px solid #ffd6df; background: #fff5f7; color: #d6446a; border-radius: 9px; padding: 8px 10px; font-size: 12px; }
 .cm-subs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .tag { display: inline-flex; align-items: center; gap: 4px; background: #f3f6fc; border-radius: 999px; padding: 6px 11px; font-size: 12px; color: #3a4452; }
@@ -401,6 +406,10 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
   .zoom-bar { background: #1e2840; border-color: #2a3650; color: #9fb6e8; }
   .zoom-reset { background: #243355; border-color: #2a3650; color: #8fb4ff; }
   .cm-name { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  .cm-seq > label { color: #9fb6e8; }
+  .cm-seq-input { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  .cm-seq-input:focus { border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(122,162,255,0.28); }
+  .cm-seq-input.seq-conflict { border-color: #ff6b85; background: #2a1a24; color: #ff7a9c; box-shadow: 0 0 0 3px rgba(255,107,133,0.25); }
   .cm-del { background: #2a1a24; border-color: #5a2a3a; color: #ff7a9c; }
   .tabbar { background: rgba(20,28,44,0.96); border-top-color: #2a3650; }
   .tabbar button { color: #9aa6bd; }
