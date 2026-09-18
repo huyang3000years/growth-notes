@@ -11,6 +11,14 @@
     { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2' }
   ];
 
+  /* 分类可选图标库（24 个互不相同，适合启蒙学习场景） */
+  var ICON_LIBRARY = ['🏀', '🔤', '📜', '🔡', '📚', '🎵', '🎤', '⭐', '🌟', '🎯', '🚀', '🌈',
+                     '💡', '🔥', '🍀', '🧩', '🎨', '🏆', '🌱', '🦄', '🍎', '⚽', '🎹', '🐝'];
+  /* 新增大类时的默认配色（与图标数量匹配，避免循环重复） */
+  var CAT_COLORS = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B',
+                   '#9B5DE5', '#00BBF9', '#F15BB5', '#FEE440', '#2EC4B6', '#E71D36', '#8338EC', '#3A86FF',
+                   '#FB5607', '#FF006E', '#06A77D', '#C77DFF', '#FCA311', '#43AA8B', '#7209B7', '#FFD166'];
+
   var ui = {
     catId: null,
     rows: [{ content: '', minutes: '' }],
@@ -896,8 +904,8 @@
 
   function openCatEditModal(id) {
     var c = findCat(id); if (!c) return;
-    var iconOpts = ['🏀', '🔤', '📜', '🔡', '📚', '🎵', '🎤', '⭐', '🌟', '🎯', '🚀', '🌈', '💡', '🔥', '🍀', '🧩', '🎨', '🏆'];
-    var colorOpts = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B', '#9B5DE5', '#00BBF9', '#F15BB5', '#FEE440'];
+    var iconOpts = ICON_LIBRARY;
+    var colorOpts = CAT_COLORS;
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML =
@@ -935,10 +943,8 @@
 
   function addCatHandler() {
     var name = prompt('新增大类名称：'); if (!name) return;
-    var colors = ['#FF6B6B', '#4ECDC4', '#A78BFA', '#FFB703', '#06D6A0', '#EF476F', '#118AB2', '#F78C6B'];
-    var icons = ['⭐', '🌟', '🎯', '🚀', '🌈', '💡', '🔥', '🍀'];
     var i = state.categories.length;
-    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: icons[i % icons.length], color: colors[i % colors.length] } });
+    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: ICON_LIBRARY[i % ICON_LIBRARY.length], color: CAT_COLORS[i % CAT_COLORS.length] } });
   }
 
   function exportData() {
