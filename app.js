@@ -356,7 +356,7 @@
       var showDel = ui.rows.length > 1;
       return '<div class="rec-row">' +
         '<div class="ri-field"><label class="ri-lbl">事项</label>' +
-        '<textarea class="ri-content" data-row="' + i + '" rows="2" placeholder="如：跳绳100个">' + esc(row.content) + '</textarea></div>' +
+        '<textarea class="ri-content" data-row="' + i + '" rows="1" placeholder="如：跳绳100个">' + esc(row.content) + '</textarea></div>' +
         '<div class="ri-field ri-min"><label class="ri-lbl">min</label>' +
         '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
@@ -381,7 +381,7 @@
   /* 文本框随内容增长高度：默认只有一行，输入换行/文字变长才变高（不再自动冒出空行） */
   function autoGrow(el) {
     el.style.height = 'auto';
-    var max = 132;
+    var max = 68; /* 最多两行高度 */
     el.style.height = Math.min(el.scrollHeight, max) + 'px';
   }
 
@@ -457,7 +457,7 @@
       '<label class="lbl">分类</label>' +
       '<div class="chips" id="editCats">' + catChips + '</div>' +
       '<label class="lbl">事项</label>' +
-      '<textarea id="editContent" class="modal-input modal-textarea" rows="2" placeholder="如：跳绳100个">' + esc(r.content || '') + '</textarea>' +
+      '<textarea id="editContent" class="modal-input modal-textarea" rows="1" placeholder="如：跳绳100个">' + esc(r.content || '') + '</textarea>' +
       '<label class="lbl">min</label>' +
       '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
       '<div class="modal-actions">' +
