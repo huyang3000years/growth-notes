@@ -2,13 +2,13 @@
   'use strict';
 
   var DEFAULT_CATS = [
-    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B' },
-    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4' },
-    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA' },
-    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703' },
-    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0' },
-    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F' },
-    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2' }
+    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B', seq: 1 },
+    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4', seq: 2 },
+    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA', seq: 3 },
+    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703', seq: 4 },
+    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0', seq: 5 },
+    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F', seq: 6 },
+    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2', seq: 7 }
   ];
 
   /* 分类可选图标库（24 个互不相同，适合启蒙学习场景） */
@@ -58,6 +58,14 @@
     return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
   }
   function findCat(id) { for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i]; return null; }
+  /* 按序号( seq )升序返回分类副本；序号相同则保持原数组顺序（稳定排序） */
+  function sortedCats() {
+    return state.categories.slice().sort(function (a, b) {
+      var sa = (typeof a.seq === 'number') ? a.seq : 9999;
+      var sb = (typeof b.seq === 'number') ? b.seq : 9999;
+      return sa - sb;
+    });
+  }
 
   /* 图表命中检测（点击柱状用） */
   var barHitData = [];
@@ -89,9 +97,10 @@
     return best;
   }
   function commitChipOrder(container) {
-    var ids = [];
-    container.querySelectorAll('.chip').forEach(function (c) { ids.push(c.dataset.cat); });
-    store.op('reorderCats', { order: ids });
+    /* 拖动排序直接写入序号(seq)，让首页图标顺序与「分类管理」里的序号保持一致 */
+    var seqs = [];
+    container.querySelectorAll('.chip').forEach(function (c, i) { seqs.push({ id: c.dataset.cat, seq: i + 1 }); });
+    store.op('setSeqs', { seqs: seqs });
   }
 
   /* ---------------- local store (无云端) ---------------- */
@@ -101,14 +110,23 @@
     var onChange = null;
 
     function clone(o) { return JSON.parse(JSON.stringify(o)); }
+    /* 为缺失序号的旧数据按当前顺序补上 seq（1..N），并在有变化时落盘 */
+    function ensureSeq(cats) {
+      var changed = false;
+      cats.forEach(function (c, i) {
+        if (typeof c.seq !== 'number' || isNaN(c.seq)) { c.seq = i + 1; changed = true; }
+      });
+      return changed;
+    }
     function load() {
       try {
         var raw = localStorage.getItem(KEY);
-        if (raw) { var d = JSON.parse(raw); if (d && d.categories) return d; }
+        if (raw) { var d = JSON.parse(raw); if (d && d.categories) { var ch = ensureSeq(d.categories); if (ch) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} } return d; } }
       } catch (e) {}
       return { categories: clone(DEFAULT_CATS), records: [] };
     }
     function save() { try { localStorage.setItem(KEY, JSON.stringify(cache)); } catch (e) {} }
+    function silentSave() { save(); }
 
     function getState() { return cache; }
     function getSpace() { return null; }
@@ -138,6 +156,12 @@
           Object.keys(cmap).forEach(function (id) { narr.push(cmap[id]); });
           cache.categories = narr; break;
         }
+        case 'setSeqs': {
+          var sm = {};
+          (payload.seqs || []).forEach(function (s) { sm[s.id] = s.seq; });
+          cache.categories.forEach(function (c) { if (sm.hasOwnProperty(c.id)) c.seq = sm[c.id]; });
+          break;
+        }
         case 'resetSpace': cache.categories = clone(DEFAULT_CATS); cache.records = []; break;
       }
     }
@@ -150,7 +174,7 @@
 
     function init(cb) { onChange = cb; if (onChange) onChange(); }
 
-    return { getState: getState, getSpace: getSpace, getShareLink: getShareLink, op: op, init: init, setStatus: setStatus };
+    return { getState: getState, getSpace: getSpace, getShareLink: getShareLink, op: op, init: init, setStatus: setStatus, silentSave: silentSave };
   }
 
   /* ---------------- tabs ---------------- */
@@ -223,7 +247,7 @@
 
   function renderRecord() {
     var root = document.getElementById('view-record');
-    var cats = state.categories;
+    var cats = sortedCats();
     if (!ui.catId && cats.length) ui.catId = cats[0].id;
 
     var chips = cats.map(function (c) {
@@ -237,7 +261,7 @@
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
       '<div class="chips">' + chips + '</div>' +
-      '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序</p>' +
+      '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序（也可在「分类管理」里设序号）</p>' +
       '<div id="recRows" class="rec-rows"></div>' +
       '<button type="button" class="btn-add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
@@ -644,7 +668,11 @@
   function buildPano(el, large, opts) {
     if (!el) return;
     el.classList.toggle('pano-grid-lg', !!large);
-    var cats = (opts && opts.categories) ? opts.categories : state.categories;
+    var cats = ((opts && opts.categories) ? opts.categories : state.categories).slice().sort(function (a, b) {
+      var sa = (typeof a.seq === 'number') ? a.seq : 9999;
+      var sb = (typeof b.seq === 'number') ? b.seq : 9999;
+      return sa - sb;
+    });
     var data = (opts && opts.records) ? opts.records : state.records;
     var rawDates = (opts && opts.dates) ? opts.dates : panoRangeDates();
     var dates = rawDates.slice().reverse(); // 最新在上
@@ -868,10 +896,13 @@
 
   /* 分类管理子页：编辑 / 删除 / 新增，支持返回 */
   function renderCatManage(root) {
-    var cats = state.categories.map(function (c) {
+    var cats = sortedCats();
+    var catsHtml = cats.map(function (c) {
       return '<div class="cat-manage">' +
         '<div class="cm-head"><span class="cm-icon cm-pickicon" style="background:' + c.color + '" data-pickicon="' + c.id + '" title="点击更换图标">' + c.icon + '</span>' +
         '<span class="cm-name">' + esc(c.name) + '</span></div>' +
+        '<div class="cm-seq"><label>序号</label>' +
+        '<input type="number" class="cm-seq-input" data-seqcat="' + c.id + '" value="' + (typeof c.seq === 'number' ? c.seq : '') + '" min="1" placeholder="序号"></div>' +
         '<div class="cm-actions">' +
         '<button class="cm-edit" data-editcat="' + c.id + '" type="button">编辑</button>' +
         '<button class="cm-del" data-delcat="' + c.id + '" type="button">删除</button></div></div>';
@@ -881,9 +912,38 @@
       '<button class="btn-ghost cat-back" id="catBack" type="button">‹ 返回</button>' +
       '<h3 class="section-title" style="margin:0; text-align:center; flex:1 1 auto">分类管理</h3>' +
       '<button class="btn-primary cat-add" id="addCat" type="button" style="margin:0; width:auto; padding:8px 14px; white-space:nowrap">＋ 新增</button></div>' +
-      '<div class="card cat-list">' + (cats || '<p class="modal-empty">还没有大类</p>') + '</div>';
+      '<p class="tip" style="padding:2px 2px 8px">首页图标按「序号」从小到大排列；两个分类填了相同序号会标红提示冲突。</p>' +
+      '<div class="card cat-list">' + (catsHtml || '<p class="modal-empty">还没有大类</p>') + '</div>';
     root.querySelector('#catBack').addEventListener('click', function () { settingsPage = 'main'; renderSettings(); });
     root.querySelector('#addCat').addEventListener('click', addCatHandler);
+
+    /* 序号输入：直接改内存并静默落盘（不触发整页重渲染，避免输入时丢焦点）；实时标红重复序号 */
+    function refreshSeqConflicts() {
+      var inputs = root.querySelectorAll('.cm-seq-input');
+      var byVal = {};
+      inputs.forEach(function (inp) {
+        inp.classList.remove('seq-conflict');
+        var v = (inp.value || '').trim();
+        if (v === '' || isNaN(+v)) return;
+        (byVal[v] = byVal[v] || []).push(inp);
+      });
+      Object.keys(byVal).forEach(function (v) {
+        if (byVal[v].length > 1) byVal[v].forEach(function (inp) { inp.classList.add('seq-conflict'); });
+      });
+    }
+    root.querySelectorAll('.cm-seq-input').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        var raw = (inp.value || '').trim();
+        var id = inp.dataset.seqcat;
+        var cat = findCat(id); if (!cat) return;
+        if (raw === '' || isNaN(+raw)) { cat.seq = null; }
+        else { cat.seq = parseInt(raw, 10); }
+        store.silentSave();           // 持久化但不重渲染，保持输入焦点
+        refreshSeqConflicts();
+      });
+    });
+    refreshSeqConflicts();
+
     root.querySelectorAll('[data-delcat]').forEach(function (b) {
       b.addEventListener('click', function () { if (confirm('删除该大类及其下所有记录？')) store.op('deleteCat', { id: b.dataset.delcat }); });
     });
@@ -927,6 +987,8 @@
       '<h3 class="modal-title">编辑大类</h3>' +
       '<label class="lbl">名称</label>' +
       '<input type="text" id="catName" class="modal-input" value="' + esc(c.name) + '" placeholder="如：运动">' +
+      '<label class="lbl">序号（首页按序号从小到大排列，相同序号会冲突）</label>' +
+      '<input type="number" id="catSeq" class="modal-input" value="' + (typeof c.seq === 'number' ? c.seq : '') + '" min="1" placeholder="如 1">' +
       '<label class="lbl">图标</label><div class="icon-pick" id="catIcons">' +
       iconOpts.map(function (ic) { return '<button type="button" class="ip' + (ic === c.icon ? ' active' : '') + '" data-ic="' + ic + '">' + ic + '</button>'; }).join('') +
       '</div>' +
@@ -950,7 +1012,16 @@
     overlay.querySelector('#catSave').addEventListener('click', function () {
       var nm = (overlay.querySelector('#catName').value || '').trim();
       if (!nm) { alert('名称必填'); return; }
-      store.op('updateCat', { id: id, fields: { name: nm, icon: selIcon, color: selColor } });
+      var seqRaw = (overlay.querySelector('#catSeq').value || '').trim();
+      var seqVal = null;
+      if (seqRaw !== '') {
+        seqVal = parseInt(seqRaw, 10);
+        if (isNaN(seqVal) || seqVal < 1) { alert('序号需为大于 0 的整数'); return; }
+        /* 与其他分类的重号检查（允许与自身相同） */
+        var dup = state.categories.filter(function (x) { return x.id !== id && x.seq === seqVal; });
+        if (dup.length) { alert('序号 ' + seqVal + ' 与「' + dup[0].name + '」冲突，请换一个'); return; }
+      }
+      store.op('updateCat', { id: id, fields: { name: nm, icon: selIcon, color: selColor, seq: seqVal } });
       close();
     });
   }
@@ -958,7 +1029,9 @@
   function addCatHandler() {
     var name = prompt('新增大类名称：'); if (!name) return;
     var i = state.categories.length;
-    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: ICON_LIBRARY[i % ICON_LIBRARY.length], color: CAT_COLORS[i % CAT_COLORS.length] } });
+    var maxSeq = 0;
+    state.categories.forEach(function (c) { if (typeof c.seq === 'number' && c.seq > maxSeq) maxSeq = c.seq; });
+    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: ICON_LIBRARY[i % ICON_LIBRARY.length], color: CAT_COLORS[i % CAT_COLORS.length], seq: maxSeq + 1 } });
   }
 
   function exportData() {
