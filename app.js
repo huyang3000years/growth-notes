@@ -880,7 +880,7 @@
   function renderCatManage(root) {
     var cats = state.categories.map(function (c) {
       return '<div class="cat-manage">' +
-        '<div class="cm-head"><span class="cm-icon" style="background:' + c.color + '">' + c.icon + '</span>' +
+        '<div class="cm-head"><span class="cm-icon cm-pickicon" style="background:' + c.color + '" data-pickicon="' + c.id + '" title="点击更换图标">' + c.icon + '</span>' +
         '<span class="cm-name">' + esc(c.name) + '</span></div>' +
         '<div class="cm-actions">' +
         '<button class="cm-edit" data-editcat="' + c.id + '" type="button">编辑</button>' +
@@ -900,6 +900,30 @@
     root.querySelectorAll('[data-editcat]').forEach(function (b) {
       b.addEventListener('click', function () { openCatEditModal(b.dataset.editcat); });
     });
+    root.querySelectorAll('[data-pickicon]').forEach(function (b) {
+      b.addEventListener('click', function () { openIconPicker(b.dataset.pickicon); });
+    });
+  }
+
+  /* 点击分类管理里的图标，直接弹出图标选择浮层，选完即改 */
+  function openIconPicker(catId) {
+    var c = findCat(catId); if (!c) return;
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box icon-pick-pop">' +
+      '<h3 class="modal-title">选择图标</h3>' +
+      '<div class="icon-pick" id="pickIcons">' +
+      ICON_LIBRARY.map(function (ic) { return '<button type="button" class="ip' + (ic === c.icon ? ' active' : '') + '" data-ic="' + ic + '">' + ic + '</button>'; }).join('') +
+      '</div>' +
+      '<div class="modal-actions"><button type="button" class="btn-ghost" id="pickCancel">取消</button></div></div>';
+    document.body.appendChild(overlay);
+    function close() { if (overlay.parentNode) document.body.removeChild(overlay); }
+    overlay.querySelectorAll('#pickIcons .ip').forEach(function (b) {
+      b.addEventListener('click', function () { store.op('updateCat', { id: catId, fields: { icon: b.dataset.ic } }); close(); });
+    });
+    overlay.querySelector('#pickCancel').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
   }
 
   function openCatEditModal(id) {
