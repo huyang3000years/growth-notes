@@ -266,6 +266,8 @@
       var chipsEl = root.querySelector('.chips');
       if (!chipsEl) return;
       suppressClick = false;
+      /* 阻止长按弹出的「全选/复制」菜单拦截拖动 */
+      chipsEl.addEventListener('contextmenu', function (e) { e.preventDefault(); });
       chipsEl.querySelectorAll('.chip').forEach(function (chip) {
         var pressTimer = null, longFired = false, startX = 0, startY = 0;
         chip.addEventListener('pointerdown', function (e) {
@@ -273,6 +275,7 @@
           startX = e.clientX; startY = e.clientY; longFired = false;
           pressTimer = setTimeout(function () {
             longFired = true;
+            if (window.getSelection) { try { window.getSelection().removeAllRanges(); } catch (_) {} }
             chip.classList.add('dragging');
             chipsEl.classList.add('reordering');
             if (chip.setPointerCapture) { try { chip.setPointerCapture(e.pointerId); } catch (_) {} }
