@@ -261,7 +261,6 @@
       '<input type="date" id="recDate" value="' + ui.recDate + '">' +
       '<label class="lbl">大类</label>' +
       '<div class="chips">' + chips + '</div>' +
-      '<p class="tip" style="padding:4px 2px 0">长按大类图标可拖动排序（也可在「分类管理」里设序号）</p>' +
       '<div id="recRows" class="rec-rows"></div>' +
       '<button type="button" class="btn-add-row" id="addRow">＋ 新增事项</button>' +
       '<button class="btn-primary" id="recSave">保存记录</button>' +
@@ -356,8 +355,8 @@
     box.innerHTML = ui.rows.map(function (row, i) {
       var showDel = ui.rows.length > 1;
       return '<div class="rec-row">' +
-        '<div class="ri-field"><label class="ri-lbl">事项（可换行）</label>' +
-        '<textarea class="ri-content" data-row="' + i + '" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(row.content) + '</textarea></div>' +
+        '<div class="ri-field"><label class="ri-lbl">事项</label>' +
+        '<textarea class="ri-content" data-row="' + i + '" rows="2" placeholder="如：跳绳100个">' + esc(row.content) + '</textarea></div>' +
         '<div class="ri-field ri-min"><label class="ri-lbl">min</label>' +
         '<input type="number" class="ri-minutes" data-row="' + i + '" min="1" placeholder="如 20" value="' + esc(row.minutes) + '"></div>' +
         (showDel ? '<button type="button" class="ri-del" data-delrow="' + i + '">✕</button>' : '') +
@@ -457,8 +456,8 @@
       '<h3 class="modal-title">编辑记录</h3>' +
       '<label class="lbl">分类</label>' +
       '<div class="chips" id="editCats">' + catChips + '</div>' +
-      '<label class="lbl">事项（可换行）</label>' +
-      '<textarea id="editContent" class="modal-input modal-textarea" rows="1" placeholder="如：跳绳100个（可换行）">' + esc(r.content || '') + '</textarea>' +
+      '<label class="lbl">事项</label>' +
+      '<textarea id="editContent" class="modal-input modal-textarea" rows="2" placeholder="如：跳绳100个">' + esc(r.content || '') + '</textarea>' +
       '<label class="lbl">min</label>' +
       '<input type="number" id="editMinutes" class="modal-input" min="1" value="' + esc(r.minutes) + '" placeholder="如 20">' +
       '<div class="modal-actions">' +
@@ -914,7 +913,6 @@
       '<button class="btn-ghost cat-back" id="catBack" type="button">‹ 返回</button>' +
       '<h3 class="section-title" style="margin:0; text-align:center; flex:1 1 auto">分类管理</h3>' +
       '<button class="btn-primary cat-add" id="addCat" type="button" style="margin:0; width:auto; padding:8px 14px; white-space:nowrap">＋ 新增</button></div>' +
-      '<p class="tip" style="padding:2px 2px 8px">首页图标按「序号」从小到大排列；两个分类填了相同序号会标红提示冲突。</p>' +
       '<div class="card cat-list">' + (catsHtml || '<p class="modal-empty">还没有大类</p>') + '</div>';
     root.querySelector('#catBack').addEventListener('click', function () { settingsPage = 'main'; renderSettings(); });
     root.querySelector('#addCat').addEventListener('click', addCatHandler);
