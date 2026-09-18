@@ -899,13 +899,15 @@
     var cats = sortedCats();
     var catsHtml = cats.map(function (c) {
       return '<div class="cat-manage">' +
-        '<div class="cm-head"><span class="cm-icon cm-pickicon" style="background:' + c.color + '" data-pickicon="' + c.id + '" title="点击更换图标">' + c.icon + '</span>' +
-        '<span class="cm-name">' + esc(c.name) + '</span></div>' +
+        '<div class="cm-row">' +
+        '<span class="cm-icon cm-pickicon" style="background:' + c.color + '" data-pickicon="' + c.id + '" title="点击更换图标">' + c.icon + '</span>' +
+        '<span class="cm-name">' + esc(c.name) + '</span>' +
         '<div class="cm-seq"><label>序号</label>' +
         '<input type="number" class="cm-seq-input" data-seqcat="' + c.id + '" value="' + (typeof c.seq === 'number' ? c.seq : '') + '" min="1" placeholder="序号"></div>' +
         '<div class="cm-actions">' +
         '<button class="cm-edit" data-editcat="' + c.id + '" type="button">编辑</button>' +
-        '<button class="cm-del" data-delcat="' + c.id + '" type="button">删除</button></div></div>';
+        '<button class="cm-del" data-delcat="' + c.id + '" type="button">删除</button></div>' +
+        '</div></div>';
     }).join('');
     root.innerHTML =
       '<div class="cat-manage-head">' +
