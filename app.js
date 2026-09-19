@@ -208,7 +208,7 @@
         '<span class="rec-dot" style="background:' + (c ? c.color : '#999') + '"></span>' +
         '<div class="rec-main"><div class="rec-title">' + esc(r.content || '') + '</div>' +
         '<div class="rec-meta">' + (c ? c.icon + c.name : '') + ' · ' + r.date + '</div></div>' +
-        '<div class="rec-time">' + r.minutes + ' min</div>' +
+        '<div class="rec-time">' + r.minutes + ' min' + (c && c.stats === false ? '<span class="rec-time-note">(不统计)</span>' : '') + '</div>' +
         '<div class="rec-actions">' +
         '<button class="rec-edit" data-edit="' + r.id + '" title="编辑">✎</button>' +
         '<button class="rec-del" data-del="' + r.id + '" title="删除">✕</button>' +
@@ -234,8 +234,10 @@
   function dashboardHTML() {
     var today = fmtDate(new Date());
     var week = weekDays(today);
-    var todayTotal = state.records.filter(function (r) { return r.date === today; }).reduce(function (s, r) { return s + r.minutes; }, 0);
-    var weekTotal = state.records.filter(function (r) { return week.indexOf(r.date) >= 0; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+    var inStats = {};
+    state.categories.forEach(function (c) { if (c.stats !== false) inStats[c.id] = true; });
+    var todayTotal = state.records.filter(function (r) { return r.date === today && inStats[r.catId]; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+    var weekTotal = state.records.filter(function (r) { return week.indexOf(r.date) >= 0 && inStats[r.catId]; }).reduce(function (s, r) { return s + r.minutes; }, 0);
     var streak = computeStreak();
     return '<div class="dash-card"><div class="dash-num">' + todayTotal + '</div><div class="dash-lbl">今日(min)</div></div>' +
       '<div class="dash-card"><div class="dash-num">' + weekTotal + '</div><div class="dash-lbl">本周(min)</div></div>' +
@@ -891,7 +893,7 @@
           '<span class="rec-dot" style="background:' + (cc ? cc.color : '#999') + '"></span>' +
           '<div class="mr-main"><div class="mr-title">' + esc(r.content || '') + '</div>' +
           '<div class="mr-meta">' + (cc ? esc(cc.name) : '') + ' · ' + r.date + '</div></div>' +
-          '<div class="mr-min">' + r.minutes + ' min</div></li>';
+          '<div class="mr-min">' + r.minutes + ' min' + (cc && cc.stats === false ? '<span class="mr-note">(不统计)</span>' : '') + '</div></li>';
       }).join('') + '</ul>';
       sRes.querySelectorAll('[data-edit]').forEach(function (b) {
         b.addEventListener('click', function () { openEditModal(b.dataset.edit); });
