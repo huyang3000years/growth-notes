@@ -262,19 +262,22 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 
 .cat-manage { border: 1px solid #eef2f8; border-radius: 14px; padding: 12px; margin-bottom: 10px; }
 .cm-head { display: flex; align-items: center; gap: 10px; }
-.cm-row { display: flex; align-items: center; gap: 10px; }
+.cm-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
 .cm-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex: 0 0 auto; }
 .cm-icon.cm-pickicon { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
 .cm-icon.cm-pickicon:hover { transform: scale(1.08); box-shadow: 0 0 0 2px rgba(91,141,239,0.45); }
 .cm-icon.cm-pickicon:active { transform: scale(0.94); }
 .icon-pick-pop .icon-pick { max-height: 50vh; overflow-y: auto; padding: 2px; }
-.cm-name { flex: 1 1 auto; min-width: 0; border: 1px solid #eef2f8; background: #fbfdff; border-radius: 9px; padding: 8px 10px; font-size: 14px; }
-.cm-seq { flex: 0 1 25%; min-width: 96px; display: flex; align-items: center; gap: 6px; }
+.cm-name { flex: 1 1 1px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid #eef2f8; background: #fbfdff; border-radius: 9px; padding: 7px 9px; font-size: 14px; }
+.cm-seq { flex: 0 1 22%; min-width: 80px; display: flex; align-items: center; gap: 5px; }
+.cm-stats { flex: 0 0 auto; border: 1px solid #cfe6d6; background: #e7f7ee; color: #1f9d57; border-radius: 9px; padding: 7px 9px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.cm-stats:active { transform: scale(0.96); }
+.cm-stats:not(.on) { border-color: #e2e6ee; background: #f1f3f7; color: #9aa3b2; }
 .cm-seq > label { flex: 0 0 auto; font-size: 13px; color: #6b7585; white-space: nowrap; }
 .cm-seq-input { width: 100%; max-width: 72px; border: 1px solid #e0e6f0; border-radius: 9px; padding: 8px 10px; font-size: 14px; background: #fff; color: #2b3442; }
 .cm-seq-input:focus { outline: none; border-color: #5b8def; box-shadow: 0 0 0 3px rgba(91,141,239,0.18); }
 .cm-seq-input.seq-conflict { border-color: #e0536a; background: #fff1f4; color: #d6446a; box-shadow: 0 0 0 3px rgba(224,83,106,0.18); }
-.cm-del { border: 1px solid #ffd6df; background: #fff5f7; color: #d6446a; border-radius: 9px; padding: 8px 10px; font-size: 12px; }
+.cm-del { border: 1px solid #ffd6df; background: #fff5f7; color: #d6446a; border-radius: 9px; padding: 7px 11px; font-size: 12px; flex: 0 0 auto; }
 .cm-subs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .tag { display: inline-flex; align-items: center; gap: 4px; background: #f3f6fc; border-radius: 999px; padding: 6px 11px; font-size: 12px; color: #3a4452; }
 .tag.add { border: 1px dashed #b9c6e0; color: #5b8def; background: #fff; }
@@ -288,7 +291,7 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .cat-add { flex: 0 0 auto; }
 .cat-list { padding: 12px; }
 .cm-actions { display: flex; gap: 8px; margin-top: 0; flex: 0 0 auto; }
-.cm-edit { border: 1px solid #bcd0f5; background: #eef4ff; color: #5b8def; border-radius: 9px; padding: 7px 14px; font-size: 13px; font-weight: 600; flex: 1 1 auto; }
+.cm-edit { border: 1px solid #bcd0f5; background: #eef4ff; color: #5b8def; border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 600; flex: 0 0 auto; }
 .cm-edit:active { background: #dbe7ff; }
 .icon-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .icon-pick .ip { width: 40px; height: 40px; border: 1px solid #e2e8f2; background: #f8faff; border-radius: 10px; font-size: 20px; }
@@ -407,6 +410,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
   .zoom-bar { background: #1e2840; border-color: #2a3650; color: #9fb6e8; }
   .zoom-reset { background: #243355; border-color: #2a3650; color: #8fb4ff; }
   .cm-name { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
+  .cm-stats { background: #143a2b; border-color: #1f6b4a; color: #58e0a0; }
+  .cm-stats:not(.on) { background: #232c40; border-color: #33405c; color: #8a96b0; }
   .cm-seq > label { color: #9fb6e8; }
   .cm-seq-input { background: #1e2840; border-color: #2a3650; color: #e6ecf6; }
   .cm-seq-input:focus { border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(122,162,255,0.28); }
