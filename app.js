@@ -254,8 +254,7 @@
     if (!ui.catId && cats.length) ui.catId = cats[0].id;
 
     var chips = cats.map(function (c) {
-      var note = (c.stats === false) ? '<span class="chip-note">(不统计)</span>' : '';
-      return '<button class="chip ' + (c.id === ui.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + note + '</button>';
+      return '<button class="chip ' + (c.id === ui.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</button>';
     }).join('');
 
     root.innerHTML =
@@ -454,8 +453,7 @@
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     var catChips = state.categories.map(function (c) {
-      var note = (c.stats === false) ? '<span class="chip-note">(不统计)</span>' : '';
-      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + esc(c.name) + note + '</button>';
+      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + esc(c.name) + '</button>';
     }).join('');
     overlay.innerHTML =
       '<div class="modal-box">' +
@@ -678,7 +676,7 @@
   function buildPano(el, large, opts) {
     if (!el) return;
     el.classList.toggle('pano-grid-lg', !!large);
-    var cats = ((opts && opts.categories) ? opts.categories : state.categories).filter(function (c) { return c.stats !== false; }).slice().sort(function (a, b) {
+    var cats = ((opts && opts.categories) ? opts.categories : state.categories).filter(function (c) { return (opts && opts.includeNonStat) ? true : c.stats !== false; }).slice().sort(function (a, b) {
       var sa = (typeof a.seq === 'number') ? a.seq : 9999;
       var sb = (typeof b.seq === 'number') ? b.seq : 9999;
       return sa - sb;
@@ -784,7 +782,7 @@
       '<div class="pano-scroll"><div class="pano-grid" id="kwGrid"></div></div></div>';
     document.body.appendChild(overlay);
     var grid = overlay.querySelector('#kwGrid');
-    buildPano(grid, false, { records: matched, dates: dates, categories: usedCats });
+    buildPano(grid, false, { records: matched, dates: dates, categories: usedCats, includeNonStat: true });
     grid.onclick = function (e) {
       var cell = e.target.closest('[data-date]');
       if (cell) showPanoDetail(cell.dataset.date, cell.dataset.cat || '', matched);
