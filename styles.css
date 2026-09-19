@@ -72,8 +72,6 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
   gap: 4px;
 }
 .chip.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, #fff); color: #1f2733; font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent); }
-.chip-note { font-size: 10px; line-height: 1; color: #aab2c0; font-weight: 400; transform: scale(0.92); transform-origin: left center; }
-.chip.active .chip-note { color: #8a93a4; }
 .chip { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .chip.dragging { touch-action: none; transform: scale(1.12); box-shadow: 0 6px 18px rgba(20,30,50,0.25); z-index: 5; opacity: 0.96; cursor: grabbing; }
 .chips.reordering .chip:not(.dragging) { opacity: 0.55; }
@@ -141,8 +139,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .rec-main { flex: 1 1 auto; min-width: 0; }
 .rec-title { font-size: 14px; font-weight: 600; color: #1f2733; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rec-meta { font-size: 11px; color: #8a94a6; margin-top: 3px; }
-.rec-time { font-size: 14px; font-weight: 800; color: #5b8def; flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.rec-time-note { font-size: 10px; font-weight: 400; color: #aab2c0; line-height: 1; }
+.rec-time { font-size: 14px; font-weight: 800; color: #5b8def; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.rec-time-note { font-size: 10px; font-weight: 600; color: #5b8def; line-height: 1; }
 .rec-actions { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
 .rec-edit { border: none; background: #eef4ff; color: #5b8def; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; flex: 0 0 auto; }
 .rec-edit:active { background: #dbe7ff; }
@@ -375,7 +373,7 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
   .rec-title { color: #e6ecf6; }
   .rec-meta { color: #9aa6bd; }
   .rec-time { color: #8fb4ff; }
-  .rec-time-note { color: #7e8aa3; }
+  .rec-time-note { color: #8fb4ff; }
   .mr-note { color: #7e8aa3; }
   .rec-edit { background: #243355; color: #8fb4ff; }
   .rec-del { background: #243355; color: #9aa6bd; }
