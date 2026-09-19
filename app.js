@@ -436,11 +436,11 @@
     if (!toSave.length) { alert('请至少填写一行「事项 + 分钟」'); return; }
     toSave.forEach(function (item) {
       store.op('addRecord', { record: { id: uid(), date: ui.recDate, catId: ui.catId, content: item.content, minutes: item.minutes, createdAt: Date.now() } });
+      bumpAE(1); // 一条记录算一个，新增即计数
     });
     ui.rows = [{ content: '', minutes: '' }];
     renderRows();
     refreshRecordList();
-    bumpAE(toSave.length);
   }
 
   function openEditModal(id) {
