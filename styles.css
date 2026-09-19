@@ -141,7 +141,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .rec-main { flex: 1 1 auto; min-width: 0; }
 .rec-title { font-size: 14px; font-weight: 600; color: #1f2733; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rec-meta { font-size: 11px; color: #8a94a6; margin-top: 3px; }
-.rec-time { font-size: 14px; font-weight: 800; color: #5b8def; flex: 0 0 auto; }
+.rec-time { font-size: 14px; font-weight: 800; color: #5b8def; flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.rec-time-note { font-size: 10px; font-weight: 400; color: #aab2c0; line-height: 1; }
 .rec-actions { display: flex; gap: 6px; flex: 0 0 auto; align-items: center; }
 .rec-edit { border: none; background: #eef4ff; color: #5b8def; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; flex: 0 0 auto; }
 .rec-edit:active { background: #dbe7ff; }
@@ -174,7 +175,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
 .mr-main { flex: 1 1 auto; min-width: 0; }
 .mr-title { font-size: 14px; font-weight: 600; color: #1f2733; white-space: pre-wrap; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mr-meta { font-size: 11px; color: #8a94a6; margin-top: 2px; }
-.mr-min { font-size: 14px; font-weight: 800; color: #1f2733; flex: 0 0 auto; }
+.mr-min { font-size: 14px; font-weight: 800; color: #1f2733; flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.mr-note { font-size: 10px; font-weight: 400; color: #aab2c0; line-height: 1; }
 .modal-empty { text-align: center; color: #aab2c0; font-size: 13px; padding: 18px 0; }
 
 /* 全景图 */
@@ -373,6 +375,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
   .rec-title { color: #e6ecf6; }
   .rec-meta { color: #9aa6bd; }
   .rec-time { color: #8fb4ff; }
+  .rec-time-note { color: #7e8aa3; }
+  .mr-note { color: #7e8aa3; }
   .rec-edit { background: #243355; color: #8fb4ff; }
   .rec-del { background: #243355; color: #9aa6bd; }
   .rec-nav-title { color: #f2f6fd; }
