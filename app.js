@@ -2,13 +2,13 @@
   'use strict';
 
   var DEFAULT_CATS = [
-    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B', seq: 1 },
-    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4', seq: 2 },
-    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA', seq: 3 },
-    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703', seq: 4 },
-    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0', seq: 5 },
-    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F', seq: 6 },
-    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2', seq: 7 }
+    { id: 'sport', name: '运动', icon: '🏀', color: '#FF6B6B', seq: 1, stats: true },
+    { id: 'english', name: '英语', icon: '🔤', color: '#4ECDC4', seq: 2, stats: true },
+    { id: 'poem', name: '古诗', icon: '📜', color: '#A78BFA', seq: 3, stats: true },
+    { id: 'char', name: '识字', icon: '🔡', color: '#FFB703', seq: 4, stats: true },
+    { id: 'read', name: '阅读', icon: '📚', color: '#06D6A0', seq: 5, stats: true },
+    { id: 'vocal', name: '声乐', icon: '🎵', color: '#EF476F', seq: 6, stats: true },
+    { id: 'speech', name: '口才', icon: '🎤', color: '#118AB2', seq: 7, stats: true }
   ];
 
   /* 分类可选图标库（24 个互不相同，适合启蒙学习场景） */
@@ -110,11 +110,12 @@
     var onChange = null;
 
     function clone(o) { return JSON.parse(JSON.stringify(o)); }
-    /* 为缺失序号的旧数据按当前顺序补上 seq（1..N），并在有变化时落盘 */
+    /* 为缺失字段的旧数据补上 seq（1..N）与 stats（默认纳入统计），并在有变化时落盘 */
     function ensureSeq(cats) {
       var changed = false;
       cats.forEach(function (c, i) {
         if (typeof c.seq !== 'number' || isNaN(c.seq)) { c.seq = i + 1; changed = true; }
+        if (typeof c.stats !== 'boolean') { c.stats = true; changed = true; }
       });
       return changed;
     }
@@ -498,13 +499,17 @@
     var root = document.getElementById('view-stats');
     var dates = rangeDates();
     var recs = state.records.filter(function (r) { return dates.indexOf(r.date) >= 0; });
-    var totalMin = recs.reduce(function (s, r) { return s + r.minutes; }, 0);
+    /* 仅统计「纳入统计」的大类，避免如「户外」这类已拆分到运动/阅读的分类重复计入 */
+    var statCatIds = {};
+    state.categories.forEach(function (c) { if (c.stats !== false) statCatIds[c.id] = 1; });
+    var statRecs = recs.filter(function (r) { return statCatIds[r.catId]; });
+    var totalMin = statRecs.reduce(function (s, r) { return s + r.minutes; }, 0);
     var catSet = {}, daySet = {};
-    recs.forEach(function (r) { catSet[r.catId] = 1; daySet[r.date] = 1; });
+    statRecs.forEach(function (r) { catSet[r.catId] = 1; daySet[r.date] = 1; });
     var catKeys = Object.keys(catSet), dayKeys = Object.keys(daySet);
 
-    var byCat = state.categories.map(function (c) {
-      var m = recs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
+    var byCat = state.categories.filter(function (c) { return c.stats !== false; }).map(function (c) {
+      var m = statRecs.filter(function (r) { return r.catId === c.id; }).reduce(function (s, r) { return s + r.minutes; }, 0);
       return { id: c.id, name: c.name, value: m, color: c.color, icon: c.icon };
     }).filter(function (x) { return x.value > 0; });
     byCat = distinctColors(byCat);
@@ -514,7 +519,7 @@
       if (ui.statsRange === 'week') { var wd = ['一', '二', '三', '四', '五', '六', '日']; return '周' + wd[(parseDate(d).getDay() + 6) % 7]; }
       var p = parseDate(d); return (p.getMonth() + 1) + '/' + p.getDate();
     });
-    var byDayVals = dates.map(function (d) { return recs.filter(function (r) { return r.date === d; }).reduce(function (s, r) { return s + r.minutes; }, 0); });
+    var byDayVals = dates.map(function (d) { return statRecs.filter(function (r) { return r.date === d; }).reduce(function (s, r) { return s + r.minutes; }, 0); });
 
     /* 月视图横轴只标 1日/8日/15日/23日/最后1日，避免 30 天日期挤成一团乱码 */
     var labelShow = null;
@@ -551,7 +556,7 @@
       '<input type="date" id="statsDate" value="' + ui.statsDate + '">' +
       '</div>' +
       '<div class="summary">' +
-      sumCard(totalMin, '总时长(min)') + sumCard(recs.length, '记录数') + sumCard(catKeys.length, '涉及分类') + sumCard(dayKeys.length, '天数') +
+      sumCard(totalMin, '总时长(min)') + sumCard(statRecs.length, '记录数') + sumCard(catKeys.length, '涉及分类') + sumCard(dayKeys.length, '天数') +
       '</div>' +
       '<div class="card"><h3 class="section-title">' + (single ? '当日分类占比' : '分类占比') + '</h3>' +
       '<div id="catTableBox"></div></div>' +
@@ -669,7 +674,7 @@
   function buildPano(el, large, opts) {
     if (!el) return;
     el.classList.toggle('pano-grid-lg', !!large);
-    var cats = ((opts && opts.categories) ? opts.categories : state.categories).slice().sort(function (a, b) {
+    var cats = ((opts && opts.categories) ? opts.categories : state.categories).filter(function (c) { return c.stats !== false; }).slice().sort(function (a, b) {
       var sa = (typeof a.seq === 'number') ? a.seq : 9999;
       var sb = (typeof b.seq === 'number') ? b.seq : 9999;
       return sa - sb;
@@ -899,12 +904,14 @@
   function renderCatManage(root) {
     var cats = sortedCats();
     var catsHtml = cats.map(function (c) {
+      var inStats = c.stats !== false;
       return '<div class="cat-manage">' +
         '<div class="cm-row">' +
         '<span class="cm-icon cm-pickicon" style="background:' + c.color + '" data-pickicon="' + c.id + '" title="点击更换图标">' + c.icon + '</span>' +
         '<span class="cm-name">' + esc(c.name) + '</span>' +
         '<div class="cm-seq"><label>序号</label>' +
         '<input type="number" class="cm-seq-input" data-seqcat="' + c.id + '" value="' + (typeof c.seq === 'number' ? c.seq : '') + '" min="1" placeholder="序号"></div>' +
+        '<button type="button" class="cm-stats' + (inStats ? ' on' : '') + '" data-statcat="' + c.id + '" title="是否在统计中体现该分类">' + (inStats ? '统计' : '不统计') + '</button>' +
         '<div class="cm-actions">' +
         '<button class="cm-edit" data-editcat="' + c.id + '" type="button">编辑</button>' +
         '<button class="cm-del" data-delcat="' + c.id + '" type="button">删除</button></div>' +
@@ -954,6 +961,13 @@
     });
     root.querySelectorAll('[data-pickicon]').forEach(function (b) {
       b.addEventListener('click', function () { openIconPicker(b.dataset.pickicon); });
+    });
+    root.querySelectorAll('[data-statcat]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var cat = findCat(b.dataset.statcat); if (!cat) return;
+        var next = !(cat.stats !== false);
+        store.op('updateCat', { id: cat.id, fields: { stats: next } });
+      });
     });
   }
 
@@ -1033,7 +1047,7 @@
     var i = state.categories.length;
     var maxSeq = 0;
     state.categories.forEach(function (c) { if (typeof c.seq === 'number' && c.seq > maxSeq) maxSeq = c.seq; });
-    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: ICON_LIBRARY[i % ICON_LIBRARY.length], color: CAT_COLORS[i % CAT_COLORS.length], seq: maxSeq + 1 } });
+    store.op('addCat', { cat: { id: uid(), name: name.trim(), icon: ICON_LIBRARY[i % ICON_LIBRARY.length], color: CAT_COLORS[i % CAT_COLORS.length], seq: maxSeq + 1, stats: true } });
   }
 
   function exportData() {
