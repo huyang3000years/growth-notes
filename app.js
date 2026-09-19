@@ -252,7 +252,8 @@
     if (!ui.catId && cats.length) ui.catId = cats[0].id;
 
     var chips = cats.map(function (c) {
-      return '<button class="chip ' + (c.id === ui.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + '</button>';
+      var note = (c.stats === false) ? '<span class="chip-note">(不统计)</span>' : '';
+      return '<button class="chip ' + (c.id === ui.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + c.icon + ' ' + esc(c.name) + note + '</button>';
     }).join('');
 
     root.innerHTML =
@@ -451,7 +452,8 @@
     var overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     var catChips = state.categories.map(function (c) {
-      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + esc(c.name) + '</button>';
+      var note = (c.stats === false) ? '<span class="chip-note">(不统计)</span>' : '';
+      return '<button type="button" class="chip ' + (c.id === r.catId ? 'active' : '') + '" data-cat="' + c.id + '" style="--c:' + c.color + '">' + esc(c.name) + note + '</button>';
     }).join('');
     overlay.innerHTML =
       '<div class="modal-box">' +
