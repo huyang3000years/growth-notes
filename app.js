@@ -440,6 +440,7 @@
     ui.rows = [{ content: '', minutes: '' }];
     renderRows();
     refreshRecordList();
+    bumpAE(toSave.length);
   }
 
   function openEditModal(id) {
@@ -487,6 +488,7 @@
       if (!content) { alert('事项必填'); contentEl.focus(); return; }
       if (!minutesRaw || isNaN(minutes) || minutes <= 0) { alert('请填写有效的分钟数'); return; }
       store.op('updateRecord', { id: r.id, fields: { catId: selCat, content: content, minutes: minutes } });
+      bumpAE(1);
       close();
     });
   }
@@ -856,7 +858,7 @@
       '<button class="btn-ghost" id="exportBtn">导出数据 (JSON)</button>' +
       '<button class="btn-ghost" id="importBtn">导入数据 (JSON)</button>' +
       '<button class="btn-danger" id="resetBtn">清空全部数据</button></div>' +
-      '<p class="tip">数据保存在本机浏览器（localStorage）。换设备、清缓存或换浏览器前，请先「导出数据」备份；导入会覆盖当前数据。</p>';
+      '<p class="tip">数据保存在本机浏览器（localStorage）。每累计新增/修改 3 条记录会自动导出一份备份到下载目录；手动「导出数据」随时可备份；导入会覆盖当前数据。</p>';
 
     root.querySelector('#openCatManage').addEventListener('click', function () { settingsPage = 'cats'; renderSettings(); });
     root.querySelector('#exportBtn').addEventListener('click', exportData);
@@ -1041,6 +1043,14 @@
     a.download = '成长记录_' + fmtDate(new Date()) + '.json';
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+  /* 自动备份：累计新增/修改 3 条记录，自动触发一次数据导出下载，防止清缓存丢数据 */
+  var AE_KEY = 'ks_autoexport_count';
+  function getAECount() { var v = parseInt(localStorage.getItem(AE_KEY) || '0', 10); return isNaN(v) ? 0 : v; }
+  function bumpAE(n) {
+    var c = getAECount() + (n > 0 ? n : 1);
+    localStorage.setItem(AE_KEY, String(c));
+    if (c >= 3) { localStorage.setItem(AE_KEY, '0'); exportData(); }
   }
   function importData() {
     var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/json';
