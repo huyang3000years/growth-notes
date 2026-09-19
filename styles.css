@@ -72,6 +72,8 @@ input:focus { border-color: #5b8def; background: #fff; box-shadow: 0 0 0 3px rgb
   gap: 4px;
 }
 .chip.active { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, #fff); color: #1f2733; font-weight: 700; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent); }
+.chip-note { font-size: 10px; line-height: 1; color: #aab2c0; font-weight: 400; transform: scale(0.92); transform-origin: left center; }
+.chip.active .chip-note { color: #8a93a4; }
 .chip { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .chip.dragging { touch-action: none; transform: scale(1.12); box-shadow: 0 6px 18px rgba(20,30,50,0.25); z-index: 5; opacity: 0.96; cursor: grabbing; }
 .chips.reordering .chip:not(.dragging) { opacity: 0.55; }
@@ -365,6 +367,8 @@ textarea.ri-content:focus { border-color: #5b8def; background: #fff; box-shadow:
   input:focus { background: #223052; border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(122,162,255,0.25); }
   .chip { background: #1e2840; border-color: #2a3650; color: #cdd8ec; }
   .chip.active { background: color-mix(in srgb, #7aa2ff 18%, #182135); color: #fff; box-shadow: 0 0 0 2px rgba(122,162,255,0.4); }
+  .chip-note { color: #7e8aa3; }
+  .chip.active .chip-note { color: #b9c4dc; }
   .tip { color: #9aa6bd; }
   .rec-title { color: #e6ecf6; }
   .rec-meta { color: #9aa6bd; }
