@@ -76,12 +76,12 @@
   function chartTheme() {
     if (isDark()) return {
       bg: '#182135', text: '#eaf0fb', muted: '#9aa6bd', grid: 'rgba(255,255,255,0.10)',
-      label: '#c7d2e6', value: '#f2f6fd', line: '#7aa2ff',
+      label: '#c7d2e6', value: '#f2f6fd', line: '#7aa2ff', avg: '#ffb066',
       lfTop: 'rgba(122,162,255,0.30)', lfBot: 'rgba(122,162,255,0.02)'
     };
     return {
       bg: '#ffffff', text: '#2b3442', muted: '#9aa4b4', grid: '#eef2f8',
-      label: '#6b7585', value: '#2b3442', line: '#5b8def',
+      label: '#6b7585', value: '#2b3442', line: '#5b8def', avg: '#ff8c42',
       lfTop: 'rgba(91,141,239,0.28)', lfBot: 'rgba(91,141,239,0.02)'
     };
   }
@@ -522,6 +522,12 @@
       var p = parseDate(d); return (p.getMonth() + 1) + '/' + p.getDate();
     });
     var byDayVals = dates.map(function (d) { return statRecs.filter(function (r) { return r.date === d; }).reduce(function (s, r) { return s + r.minutes; }, 0); });
+    /* 平均线仅用于周/月视图：只统计「有数据日」(时长>0) 的算术平均，无数据日不计入 */
+    var dayAvg = null;
+    if (!single) {
+      var dn = byDayVals.filter(function (v) { return v > 0; });
+      if (dn.length) dayAvg = dn.reduce(function (s, v) { return s + v; }, 0) / dn.length;
+    }
 
     /* 月视图横轴只标 1日/8日/15日/23日/最后1日，避免 30 天日期挤成一团乱码 */
     var labelShow = null;
@@ -599,9 +605,9 @@
 
     renderCatTable(document.getElementById('catTableBox'), byCat, { single: single, date: single ? ui.statsDate : null });
     ui.zoom = null;
-    chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow };
+    chartData = { fullLen: dates.length, dates: dates, byDayLabels: byDayLabels, byDayVals: byDayVals, barLabels: barLabels, barVals: barVals, barColors: barColors, barDates: barDates, barCats: barCats, labelShow: labelShow, avg: dayAvg };
     var vChart = sliceView(dates, byDayLabels, byDayVals, barLabels, barVals, barColors, barDates, barCats, labelShow);
-    drawBars(document.getElementById('chartBar'), vChart.barLabels, vChart.barVals, vChart.barColors, vChart.barDates, vChart.barCats, vChart.labelShow);
+    drawBars(document.getElementById('chartBar'), vChart.barLabels, vChart.barVals, vChart.barColors, vChart.barDates, vChart.barCats, vChart.labelShow, dayAvg);
     var canvasBar = document.getElementById('chartBar');
     if (canvasBar) canvasBar.addEventListener('click', function (e) {
       if (!barHitData.length) return;
@@ -1147,12 +1153,14 @@
       });
     }
   }
-  function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow) {
+  function drawBars(canvas, labels, values, color, datesArr, catsArr, labelShow, avg) {
     barHitData = [];
     var c = setupCanvas(canvas), ctx = c.ctx, w = c.w, h = c.h;
     var th = chartTheme();
     ctx.fillStyle = th.bg; ctx.fillRect(0, 0, w, h);
-    var max = Math.max.apply(null, values.concat([1]));
+    var maxVals = values.concat([1]);
+    if (typeof avg === 'number' && isFinite(avg)) maxVals.push(avg);
+    var max = Math.max.apply(null, maxVals);
     var padL = 32, padR = 10, padT = 14, padB = 26, cw = w - padL - padR, ch = h - padT - padB;
     ctx.strokeStyle = th.grid; ctx.fillStyle = th.muted; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (var i = 0; i <= 4; i++) {
@@ -1175,6 +1183,17 @@
       if (labelShow ? labelShow[i] : (i % step === 0 || i === n - 1)) { ctx.fillStyle = th.label; var lx = Math.max(padL + 14, Math.min(w - padR - 14, x + bw / 2)); ctx.fillText(lb, lx, padT + ch + 6); }
       barHitData.push({ x: x, w: bw, top: padT, bottom: padT + ch, date: datesArr ? datesArr[i] : null, cat: catsArr ? catsArr[i] : null });
     });
+    /* 平均线（虚线）：仅当传入有效均值时绘制，表示「有数据日」的算术平均 */
+    if (typeof avg === 'number' && isFinite(avg) && avg > 0) {
+      var ay = padT + ch - (avg / max) * ch;
+      ctx.save();
+      ctx.strokeStyle = th.avg; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(padL, ay); ctx.lineTo(w - padR, ay); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = th.avg; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText('平均 ' + Math.round(avg), w - padR - 2, ay - 2);
+      ctx.restore();
+    }
   }
   function roundRect(ctx, x, y, w, h, r) {
     if (h < r * 2) r = h / 2; if (w < r * 2) r = w / 2;
@@ -1243,7 +1262,7 @@
     if (!chartData) return;
     var c = chartData;
     var v = sliceView(c.dates, c.byDayLabels, c.byDayVals, c.barLabels, c.barVals, c.barColors, c.barDates, c.barCats, c.labelShow);
-    drawBars(document.getElementById('chartBar'), v.barLabels, v.barVals, v.barColors, v.barDates, v.barCats, v.labelShow);
+    drawBars(document.getElementById('chartBar'), v.barLabels, v.barVals, v.barColors, v.barDates, v.barCats, v.labelShow, c.avg);
     updateZoomUI();
   }
   function updateZoomUI() {
