@@ -1190,8 +1190,8 @@
       ctx.strokeStyle = th.avg; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(padL, ay); ctx.lineTo(w - padR, ay); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = th.avg; ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-      ctx.fillText('平均 ' + Math.round(avg), w - padR - 2, ay - 2);
+      ctx.fillStyle = th.avg; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText('平均 ' + Math.round(avg), padL + 2, ay - 2);
       ctx.restore();
     }
   }
